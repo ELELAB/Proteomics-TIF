@@ -29,23 +29,38 @@ Although R-packages should automatically be installed and errors raised if they 
 
 CRAN:
 
+pamr
 openxlsx
 ggplot2
 dendextend
 heatmap.plus
 reshape
-gdata
-plyr
-data.table
+VennDiagram
 RColorBrewer
-squash
-survminer
-car
-scales
-statmod
+stringr
+caTools
+plyr
+gplots
+corrplot
+fitdistrplus
+randomForest
+glmnet
+e1071
+caret
+varSelRF
+
+(rgl)
+(plot3D)
+(pvclust)
+
 
 Bioconductor:
 
 limma
 sva
-survcomp               
+topGO
+GOSim
+gdata
+UpSetR
+biomaRt
+ReactomePA
