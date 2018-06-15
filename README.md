@@ -14,9 +14,8 @@ This repository contains proteomics data from tumour interstitial fluids obtaine
 
 The repository contains two folders:
 
-(1) Proteomics data and patient metadata. These are the data used as the starting point for our analyses.
-
-(2) A collection of R-scripts that recapitulate our work:
+    (1) Proteomics data and patient metadata. These are the data used as the starting point for our analyses.
+    (2) A collection of R-scripts that recapitulate our work:
                                 
 
 Requirements:
@@ -31,37 +30,37 @@ CRAN:
 
     pamr
     openxlsx
-ggplot2
-dendextend
-heatmap.plus
-reshape
-VennDiagram
-RColorBrewer
-stringr
-caTools
-plyr
-gplots
-corrplot
-fitdistrplus
-randomForest
-glmnet
-e1071
-caret
-varSelRF
+    ggplot2
+    dendextend
+    heatmap.plus
+    reshape
+    VennDiagram
+    RColorBrewer
+    stringr
+    caTools
+    plyr
+    gplots
+    corrplot
+    fitdistrplus
+    randomForest
+    glmnet
+    e1071
+    caret
+    varSelRF
 
-(rgl)
-(plot3D)
-(pvclust)
+    (rgl)
+    (plot3D)
+    (pvclust)
 
 
 Bioconductor:
 
-limma
-sva
-topGO
-GOSim
-gdata
-UpSetR
-biomaRt
-ReactomePA
+    limma
+    sva
+    topGO
+    GOSim
+    gdata
+    UpSetR
+    biomaRt
+    ReactomePA
 
