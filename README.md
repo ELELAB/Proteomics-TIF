@@ -6,9 +6,9 @@ Repository associated with the publication:
 
 ###
 
-corresponding author: Elena Papaleo, elenap@cancer.dk
+Corresponding author: Elena Papaleo, elenap@cancer.dk
 
-r-scripts were created by: Thilde Bagger Terkelsen, thilde@cancer.dk
+R-scripts were created by: Thilde Bagger Terkelsen, thilde@cancer.dk
 
 This repository contains proteomics data from tumour interstitial fluids obtained from a cohort of patients with breast cancer. The repository was made with intent of openly sharing both data and R-scripts used for analysis in relation to the publication.
 
