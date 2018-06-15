@@ -140,7 +140,7 @@ load("go.hs.gsets.RData")
 TyanovaGST <- read.table("All_genes_from_Tyanova_Geneset.txt", header = FALSE)
 TyanovaDEG <- read.table("DE_gene_from_Tyanova_Geneset.txt", header = FALSE)
 
-AngeloDEG <- read.table("Angelo_DE_genes.txt", header = TRUE)
+# AngeloDEG <- read.table("Angelo_DE_genes.txt", header = TRUE)
 
 
 # ---------------------------------------------------------------------------------------
