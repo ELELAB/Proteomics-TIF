@@ -20,9 +20,9 @@ The repository contains two folders:
 
 Requirements:
 
-R version 3.3.1 or higher
-Rstudio version 1.1.383 or higher        
-Bioconductor version 3.6 or higher	
+    R version 3.3.1 or higher
+    Rstudio version 1.1.383 or higher        
+    Bioconductor version 3.6 or higher	
 
 Although R-packages should automatically be installed and errors raised if they cannot be, we here provide the user with the list of required packages for manual installation:
 
