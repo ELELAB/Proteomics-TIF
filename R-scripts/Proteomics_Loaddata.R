@@ -29,8 +29,8 @@ fif_pooled_id <- as.character(sort(fif_pooled$Accession))
 # LOADING PROTEOMICS TIF DATA
 # ---------------------------------------------------------------------------------------
 
-tifdata <- read.xlsx("RESULTS_MS-MS_2014-12-23_thilde.xlsx", sheet = 2, startRow = 4, colNames = FALSE, rowNames = FALSE)
-tifinfo <- read.xlsx("tifinfo.xlsx")
+tifdata <- read.xlsx("TIFproteomics.xlsx", sheet = 2, startRow = 4, colNames = FALSE, rowNames = FALSE)
+tifinfo <- read.xlsx("TIFsampleinfo.xlsx")
 
 # ONLY PATIENT SPECIFIC PROTEOMICS
 tifdata_small <- tifdata[,12:46]
