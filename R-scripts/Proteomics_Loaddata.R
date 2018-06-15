@@ -7,7 +7,7 @@
 # LOADING DATA
 # ---------------------------------------------------------------------------------------
 
-setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/tif_data")
+setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Data")
 
 
 # ---------------------------------------------------------------------------------------
