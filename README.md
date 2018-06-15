@@ -30,6 +30,7 @@ Although R-packages should automatically be installed and errors raised if they 
 CRAN:
 
 pamr
+
 openxlsx
 ggplot2
 dendextend
