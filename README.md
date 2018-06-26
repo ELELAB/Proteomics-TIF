@@ -12,10 +12,11 @@ R-scripts were created by: Thilde Bagger Terkelsen, thilde@cancer.dk
 
 This repository contains proteomics data from tumour interstitial fluids obtained from a cohort of patients with breast cancer. The repository was made with intent of openly sharing both data and R-scripts used for analysis in relation to the publication.
 
-The repository contains two folders:
+The repository contains X folders:
 
-    (1) Proteomics data and patient metadata. These are the data used as the starting point for our analyses.
-    (2) A collection of R-scripts that recapitulate our work:
+    (1) Data: Proteomics data and patient metadata. These are the data used as the starting point for our analyses.
+    (2) Backgrounds_and_Databases: Databases and files used for the analysis, KEGG pathways maps, i2d database etc. 
+    (3) R-scripts: A collection of R-scripts that recapitulate the work.
                                 
 
 Requirements:
@@ -63,4 +64,5 @@ Bioconductor:
     UpSetR
     biomaRt
     ReactomePA
+    WGCNA
 
