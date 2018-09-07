@@ -14,7 +14,7 @@
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-my.wd <- ""
+my.wd <- "~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/"
 
 setwd(paste0(my.wd, "/Data/"))
 
@@ -769,25 +769,8 @@ pam50_ov_diag_RF <- hugo[hugo$Accession %in% pam50_ov_diag_RF, ]
 # OVERLAP WITH OTHER DATASETS SUBTYPES
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-genes_DA_LASSO_RF <- uniprot_to_name(c(sig_d, rownames(LASSO_diag), rownames(RF_diag)))
-
-sig_d_genes <- unique(sort(as.character(genes_DA_LASSO_RF[genes_DA_LASSO_RF$Accession %in% sig_d,]$name)))
-LASSO_diag_genes <- unique(sort(as.character(genes_DA_LASSO_RF[genes_DA_LASSO_RF$Accession %in% rownames(LASSO_diag),]$name)))
-RF_diag_genes <- unique(sort(as.character(genes_DA_LASSO_RF[genes_DA_LASSO_RF$Accession %in% rownames(RF_diag),]$name)))
 
 
-# Overlap with Tyanova and Angelo
-ov_DA_TyanovaGST <- intersect(TyanovaGST$V1, sig_d_genes)
-ov_DA_TyanovaDEG <- intersect(TyanovaDEG$V1, sig_d_genes)
-ov_DA_AngeloDEG <- intersect(AngeloDEG$name, sig_d_genes)
-
-ov_LASSO_TyanovaGST <- intersect(TyanovaGST$V1, LASSO_diag_genes)
-ov_LASSO_TyanovaDEG <- intersect(TyanovaDEG$V1, LASSO_diag_genes)
-ov_LASSO_AngeloDEG <- intersect(AngeloDEG$name, LASSO_diag_genes)
-
-ov_RF_TyanovaGST <- intersect(TyanovaGST$V1, RF_diag_genes)
-ov_RF_TyanovaDEG <- intersect(TyanovaDEG$V1, RF_diag_genes)
-ov_RF_AngeloDEG <- intersect(AngeloDEG$name, RF_diag_genes)
 
 
 
