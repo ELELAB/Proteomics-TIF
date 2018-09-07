@@ -10,19 +10,20 @@ library(sva)
 library(openxlsx)
 library(ggplot2)
 library(dendextend)
+library(tidyverse)
 library(heatmap.plus)
 library(reshape)
 library(VennDiagram)
 library(gdata) 
-library(topGO)
+#library(topGO)
 library(biomaRt)
-library(GOSim)
-library(corrplot)
-library(pvclust)
+#library(GOSim)
+#library(corrplot)
+#library(pvclust)
 library(stringr)
 library(plyr)
 library(gplots)
-library(ReactomePA)
+#library(ReactomePA)
 library(glmnet)
 library(fitdistrplus)
 library(caTools)
@@ -158,7 +159,7 @@ corrplot_func <- function(res) {
 
 combat_corrections <- function(my.data, my.group, my.pool, my.tils=NULL){
   mod_design <- model.matrix(~as.factor(my.group))
-  batch_corr <- ComBat(my.data, as.factor(my.pool), mod_design, par.prior=TRUE,prior.plots=FALSE)
+  batch_corr <- ComBat(as.matrix(my.data), as.factor(my.pool), mod_design, par.prior=TRUE,prior.plots=FALSE)
   if (!is.null(my.tils)) {
     batch_corr <- ComBat(batch_corr, as.factor(my.tils), mod_design, par.prior=TRUE,prior.plots=FALSE)
   }
@@ -509,11 +510,11 @@ LASSO_protein <- function(my.seed, my.data, my.group, my.multinorm=TRUE) {
 
 plot_upsetR <- function(list.of.sets, my.intersection, my.name, my.cols, my.plot, write.ids) {
   full.set <- data.frame(unique(sort(c(unlist(list.of.sets)))))
-  colnames(full.set) <- "protein"
+  colnames(full.set) <- "Accession"
   for (name in  names(list.of.sets)) {
-    full.set <- data.frame(full.set, ifelse(full.set$protein %in% as.character(list.of.sets[[name]]), 1, 0))
+    full.set <- data.frame(full.set, ifelse(full.set$Accession %in% as.character(list.of.sets[[name]]), 1, 0))
   }
-  colnames(full.set) <- c("protein", names(list.of.sets))
+  colnames(full.set) <- c("Accession", names(list.of.sets))
   metadata <- data.frame("sets" = colnames(full.set)[-1], "sets2" = colnames(full.set)[-1])
   if (my.plot==TRUE) {
     pdf(paste0(my.name, ".pdf"), height = 6, width = 10)
@@ -844,4 +845,17 @@ plot_clusters <- function(my.dataframe, my.clusters) {
   library(fpc)
   library(cluster)
   clusplot(as.matrix(d), clust$cluster, color=TRUE, shade=TRUE, col.txt=col, col.clus = c("dodgerblue3", "magenta","springgreen2"), col.p=col, labels=2, cex=0.6, lines=0, main="CLUSPLOT")
+}
+
+
+
+Overlap_GOplot <- function(my.set, my.lfc.cols, my.rib.cols) {
+  genenames <- uniprot_to_name(my.set$Accession)
+  my.set <- merge(my.set, genenames, by ="Accession", all.x=TRUE, all.y=FALSE)
+  my.set <- my.set[!is.na(my.set$name),]
+  rownames(my.set) <- my.set$name
+  my.set$name <- NULL
+  my.set$Accession <- NULL
+  my.set$logFC <- rnorm(nrow(my.set), 0, 2)
+  GOChord(as.matrix(my.set), lfc.col = my.lfc.cols, ribbon.col = my.rib.cols)
 }

@@ -14,7 +14,7 @@
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-my.wd <- ""
+my.wd <- "~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/"
 
 setwd(paste0(my.wd, "/Data/"))
 
@@ -43,7 +43,7 @@ names(intsec.list) <- c("TIF", "Nglyco", "Plasma", "Secreted", "Exosomes")
 
 
 colov <- c("#08605F", "#177E89", "#598381","#8E936D", "#5D737E")
-highly_expressed <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Sec_Plasma_Nglyco", TRUE, FALSE)
+highly_expressed <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Sec_Plasma_Nglyco", colov, TRUE, FALSE)
 
 
 
@@ -56,7 +56,7 @@ highly_expressed <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Se
 intsec.list <- list(tif_full_name, exosomes)
 names(intsec.list) <- c("TIF", "exosomes")
 
-TIF_exo <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Exosomes", TRUE, FALSE)
+TIF_exo <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Exosomes",  colov[c(1,2)], TRUE, FALSE)
 
 
 
@@ -69,7 +69,7 @@ TIF_exo <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Exosomes", 
 intsec.list <- list(tif_full_name, nif_pooled_id, fif_pooled_id)
 names(intsec.list) <- c("TIF", "NIF", "FIF")
 
-TIF_NIF_FIF <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_NIF_FIF", TRUE, FALSE)
+TIF_NIF_FIF <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_NIF_FIF", colov[c(1,2)], TRUE, FALSE)
 
 
 
@@ -156,7 +156,7 @@ pvrect(lab_check_receptor_status, alpha=0.90)
 
 # heatmap colors in blue
 heat.cols <- colorRampPalette(brewer.pal(9, "YlGnBu"))(n = 300)
-
+heat.cols <- viridis(n=100)
 
 # White spacer
 my.spacer <- as.matrix(replicate(nrow(tifinfo), "white"))
@@ -175,17 +175,36 @@ my.TILS <- get_colors(TILs, c("orange", "yellow"))
 
 my.cols <- cbind(my.TILS, my.spacer, my.GR, my.spacer, my.ER, my.spacer, my.PGR, my.spacer, my.TS)
 
-
-mod_design <- model.matrix(~diag)
-batch_corr <- ComBat(tifdata_small, pool, mod_design, par.prior=TRUE,prior.plots=FALSE)
-
 pdf("proteinclusters.pdf")
-heatmap.plus(as.matrix(scale(batch_corr , scale = FALSE)),col=heat.cols, hclustfun=function(d) hclust(d, method="ward.D2"), trace="none", Rowv = NA, labRow="", labCol="", ColSideColors=my.cols, margins = c(14,8), cexCol=1.2, cexRow = 1.3)
+heatmap.plus(as.matrix(scale(batch_corr_diag , scale = FALSE)),col=heat.cols, hclustfun=function(d) hclust(d, method="ward.D2"), trace="none", Rowv = NA, labRow="", labCol="", ColSideColors=my.cols, margins = c(14,8), cexCol=1.2, cexRow = 1.3)
 legend("bottomleft", legend = levels(diag), ncol=1, lty=c(1,1), lwd=c(3,3), cex=0.7, col=colorcode_diag, bty = "n")
 legend("bottom", legend = c("High TILs", "Low TILs", "High Grade", "Low Grade", "ER+ & PGR+", "ER- & PGR-"), ncol=3, lty=c(1,1), lwd=c(3,3), cex=0.7, col=c("orange", "yellow", "navyblue", "lightblue", "grey60", "seashell"), bty = "n")
 dev.off()
 
 
+
+
+
+dend <- as.dendrogram(hclust(dist(t(batch_corr_diag)), method = "ward.D2"))
+
+# Color scheme
+my.ER <- get_colors(ER, c("#FFFCF7", "grey60"))
+my.PGR <- get_colors(PGR, c("#FFFCF7", "grey60"))
+my.AR <- get_colors(AR, c("#FFFCF7", "grey60"))
+my.GR <- get_colors(Gr, c("#032A63","#0071AA"))
+my.TILS <- get_colors(TILs, c("#032A63","#0071AA"))
+my.ST <- get_colors(diag, c("#BF5454", "#FFFD82","#FAA275"))
+
+pdf("Dendogram.pdf", height = 10, width = 10)
+par(mar=c(10,1,1,1))
+lefcol <- c(rep("#0071AA", 14), rep("#032A63", 20))
+dend %>%
+  set("labels_col", value = c("#0071AA", "#032A63"), k=2) %>%
+  set("branches_k_color", value = c("#0071AA", "#032A63"), k = 2) %>%
+  set("leaves_pch", 19)  %>% set("leaves_cex", 0.7) %>% set("leaves_col", lefcol) %>% plot()
+# Add the colored bar
+colored_bars(cbind(my.ST, my.ER, my.PGR, my.AR, my.TILS, my.GR), dend, rowLabels = c("Subtype", "ER", "PGR", "AR", "TILs", "Grade"))
+dev.off()
 
 
 
@@ -617,34 +636,48 @@ RF_TILs <- unique(sort(c(RF_BC, RF_NonBC)))
 # Overlap results DA, LASSO and RF
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/lists_and_plots_10_01_2018/Tables/DA/Subtypes")
+setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/DA/Subtypes/Corrected_for_Pool_permissive/")
 HER2_LumA_DA <- read.table("HER2_LumA_DA_corrected_pool.txt", header=TRUE)
 HER2_TNBC_DA <- read.table("HER2_TNBC_DA_corrected_pool.txt", header = TRUE)
 LumA_TNBC_DA <- read.table("LumA_TNBC_DA_corrected_pool.txt", header = TRUE)
-HER2_LumA_DA_BC <- read.table("Best_DA_cand_HER2_LumA.txt", header=TRUE)
-HER2_TNBC_DA_BC <- read.table("Best_DA_cand_HER2_TNBC.txt", header = TRUE)
-LumA_TNBC_DA_BC <- read.table("Best_DA_cand_LumA_TNBC.txt", header = TRUE)
 
-setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/lists_and_plots_10_01_2018/Tables/LASSO")
+
+setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/LASSO")
 Subtypes_LASSO <- read.table("LASSO_subtypes_corrected_pool_TILs.txt", header=TRUE)
 
 
-setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/lists_and_plots_10_01_2018/Tables/RF")
+setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/RF")
 Subtypes_RF <- read.table("RF_subtypes_corrected_pool_TILS.txt", header=TRUE)
 
 
+my.white <- c("white", "white", "white")
+my.DLRcol <- c("#08605F", "#BFBDC1",  "#545E75")
 
-intsec.list <- list(as.character(HER2_LumA_DA$Accession), as.character(HER2_LumA_DA_BC$Accession), as.character(Subtypes_LASSO$Accession), as.character(Subtypes_RF$Accession))
-names(intsec.list) <- c("DA", "BestCandDA", "LASSO", "RF")
-Ov_HER2_LumA_DA_LA_RF <- plot_upsetR(intsec.list, c("BestCandDA"), "Best_cand_HER2_LumA", TRUE, FALSE)
 
-intsec.list <- list(as.character(HER2_TNBC_DA$Accession), as.character(HER2_TNBC_DA_BC$Accession), as.character(Subtypes_LASSO$Accession), as.character(Subtypes_RF$Accession))
-names(intsec.list) <- c("DA", "BestCandDA", "LASSO", "RF")
-Ov_HER2_TNBC_DA_LA_RF <- plot_upsetR(intsec.list, c("BestCandDA"), "Best_cand_HER2_TNBC", TRUE, FALSE)
+intsec.list <- list(as.character(HER2_LumA_DA$Accession), as.character(Subtypes_LASSO$Accession), as.character(Subtypes_RF$Accession))
+names(intsec.list) <- c("DA", "LASSO", "RF")
+Ov_HER2_LumA_DA_LA_RF <- plot_upsetR(intsec.list,  names(intsec.list), "Best_cand_HER2_LumA", colov[c(1,2,3)], FALSE, FALSE)
 
-intsec.list <- list(as.character(LumA_TNBC_DA$Accession), as.character(LumA_TNBC_DA_BC$Accession), as.character(Subtypes_LASSO$Accession), as.character(Subtypes_RF$Accession))
-names(intsec.list) <- c("DA", "BestCandDA", "LASSO", "RF")
-Ov_LumA_TNBC_DA_LA_RF <- plot_upsetR(intsec.list, c("BestCandDA"), "Best_cand_LumA_TNBC", TRUE, FALSE)
+pdf("Ov_HER2_LumA_DA_LA_RF.pdf", height = 11, width = 14)
+Overlap_GOplot(Ov_HER2_LumA_DA_LA_RF, my.white, my.DLRcol)
+dev.off()
+
+
+intsec.list <- list(as.character(HER2_TNBC_DA$Accession), as.character(Subtypes_LASSO$Accession), as.character(Subtypes_RF$Accession))
+names(intsec.list) <- c("DA", "LASSO", "RF")
+Ov_HER2_TNBC_DA_LA_RF <- plot_upsetR(intsec.list,  names(intsec.list), "Best_cand_HER2_TNBC", colov[c(1,2,3)], FALSE, FALSE)
+
+pdf("Ov_HER2_TNBC_DA_LA_RF.pdf", height = 9, width = 10)
+Overlap_GOplot(Ov_HER2_TNBC_DA_LA_RF, my.white, my.DLRcol)
+dev.off()
+
+intsec.list <- list(as.character(LumA_TNBC_DA$Accession), as.character(Subtypes_LASSO$Accession), as.character(Subtypes_RF$Accession))
+names(intsec.list) <- c("DA", "LASSO", "RF")
+Ov_LumA_TNBC_DA_LA_RF <- plot_upsetR(intsec.list, names(intsec.list), "Best_cand_LumA_TNBC", colov[c(1,2,3)], FALSE, FALSE)
+
+pdf("Ov_LumA_TNBC_DA_LA_RF.pdf", height = 11, width = 14)
+Overlap_GOplot(Ov_LumA_TNBC_DA_LA_RF, my.white, my.DLRcol)
+dev.off()
 
 
 

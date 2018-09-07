@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-my.wd <- ""
+my.wd <- "~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/"
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # LOADING DATA
@@ -46,14 +46,15 @@ tifinfo <- tifinfo[-22,]
 
 TILs <- as.factor(as.character(ifelse(tifinfo$TILs %in% c("T0", "T1"), "low", "high")))
 diag <-  as.factor(as.character(tifinfo$diag))
-tp <-  as.factor(as.character(tifinfo$tp))
-receptor_status <-  as.factor(as.character(tifinfo$receptor_status))
+#tp <-  as.factor(as.character(tifinfo$tp))
+#receptor_status <-  as.factor(as.character(tifinfo$receptor_status))
 pool <-  as.factor(as.character(paste0("p",tifinfo$pool)))
 Gr <- as.factor(as.character(ifelse(tifinfo$Gr == "3", "high", "low")))
 ER <- as.factor(as.character(tifinfo$ER))
 PGR <- as.factor(as.character(tifinfo$PGR))
 AR <- as.factor(as.character(tifinfo$AR))
 HER2 <- as.factor(as.character(tifinfo$HER2))
+MFS <- as.factor(ifelse(is.na(tifinfo$Outcome), 0, 1))
 
 # NUMBER OF NA's PER ROW - REMOVE THE PROTEINS WITH MORE THAN 12 NA's.
 numNAs <- apply(tifdata_small, 1, function(x) sum(is.na(x)))
