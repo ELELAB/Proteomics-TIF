@@ -1024,7 +1024,7 @@ L_H_nwk <- get_nodes(diag_map, L_H_nwk, "LH")
 # IHC and MS plots
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-setwd(paste0(my.wd, "Results/Tables/Tables_for_publication/Working_Progress/IHC/"))
+setwd(paste0(my.wd, "Results/Tables/IHC/"))
 
 # Load Immunohistochemistry data
 IHC <- read.delim("IHCscoresFull.txt", header = TRUE)
