@@ -8,7 +8,7 @@ Repository associated with the publication:
 
 Corresponding author: Elena Papaleo, elenap@cancer.dk
 
-R-scripts were created by: Thilde Bagger Terkelsen, thilde@cancer.dk
+R-scripts were created by: Thilde Bagger Terkelsen, thilde.terkelsen@sund.ku.dk
 
 This repository contains proteomics data from tumour interstitial fluids obtained from a cohort of patients with breast cancer. The repository was made with intent of openly sharing both data and R-scripts used for analysis in relation to the publication.
 
@@ -21,9 +21,8 @@ The repository contains X folders:
 
 Requirements:
 
-    R version 3.3.1 or higher
-    Rstudio version 1.1.383 or higher        
-    Bioconductor version 3.6 or higher	
+    R version 4.0.0 or higher
+    Rstudio version 1.2.5019 or higher        	
 
 Although R-packages should automatically be installed and errors raised if they cannot be, we here provide the user with the list of required packages for manual installation:
 
@@ -49,11 +48,6 @@ CRAN:
     caret
     varSelRF
 
-    (rgl)
-    (plot3D)
-    (pvclust)
-
-
 Bioconductor:
 
     limma
@@ -63,6 +57,7 @@ Bioconductor:
     gdata
     UpSetR
     biomaRt
-    ReactomePA
     WGCNA
+    viridis
+    gprofiler2
 
