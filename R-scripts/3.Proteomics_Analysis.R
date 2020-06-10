@@ -847,17 +847,17 @@ DAplot <- plot_upsetR(intsec.list, names(intsec.list), "Figure4", coloST, TRUE, 
 # Overlap results DA, LASSO and RF
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/DA/Subtypes/Corrected_for_Pool_permissive/")
+setwd("/Results/Tables/DA/Subtypes/Corrected_for_Pool_permissive/")
 HER2_LumA_DA <- read.table("HER2_LumA_DA_corrected_pool.txt", header=TRUE)
 HER2_TNBC_DA <- read.table("HER2_TNBC_DA_corrected_pool.txt", header = TRUE)
 LumA_TNBC_DA <- read.table("LumA_TNBC_DA_corrected_pool.txt", header = TRUE)
 
 
-setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/LASSO")
+setwd("/Results/Tables/LASSO")
 Subtypes_LASSO <- read.table("LASSO_subtypes_corrected.txt", header=TRUE)
 
 
-setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/RF")
+setwd("/Results/Tables/RF")
 Subtypes_RF <- read.table("RF_subtypes_corrected.txt", header=TRUE)
 
 
