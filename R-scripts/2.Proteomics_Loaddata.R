@@ -2,8 +2,7 @@
 # Copyright (C) 2018, Thilde Bagger Terkelsen <thilde@cancer.dk> <thildebate@gmail.com>
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-my.wd <- "~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/"
+my.wd <- ""
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # LOADING DATA
@@ -16,9 +15,9 @@ setwd(paste0(my.wd,"/Data/"))
 # LOODING POOLED DATA (TIF, NIF, FIF):
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-tif_pooled <- read.xlsx("pooled_TIF.xlsx", sheet = 1, colNames = TRUE, rowNames = FALSE)
-nif_pooled <- read.xlsx("pooled_NIF.xlsx", sheet = 1, colNames = TRUE, rowNames = FALSE)
-fif_pooled <- read.xlsx("pooled_FIF.xlsx", sheet = 1, colNames = TRUE, rowNames = FALSE)
+tif_pooled <- openxlsx::read.xlsx("pooled_TIF.xlsx", sheet = 1, colNames = TRUE, rowNames = FALSE)
+nif_pooled <- openxlsx::read.xlsx("pooled_NIF.xlsx", sheet = 1, colNames = TRUE, rowNames = FALSE)
+fif_pooled <- openxlsx::read.xlsx("pooled_FIF.xlsx", sheet = 1, colNames = TRUE, rowNames = FALSE)
 
 # ORDERING PROTEIN ACCESSION NUMBER
 tif_pooled_id <- as.character(sort(tif_pooled$Accession))
@@ -31,8 +30,8 @@ fif_pooled_id <- as.character(sort(fif_pooled$Accession))
 # LOADING PROTEOMICS TIF DATA
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-tifdata <- read.xlsx("TIFproteomics.xlsx", sheet = 2, startRow = 4, colNames = FALSE, rowNames = FALSE)
-tifinfo <- read.xlsx("TIFsampleinfo.xlsx")
+tifdata <- openxlsx::read.xlsx("TIFproteomics.xlsx", sheet = 2, startRow = 4, colNames = FALSE, rowNames = FALSE)
+tifinfo <- openxlsx::read.xlsx("TIFsampleinfo.xlsx")
 
 # ONLY PATIENT SPECIFIC PROTEOMICS
 tifdata_small <- tifdata[,12:46]
@@ -45,7 +44,11 @@ tifdata_small[22] <- NULL
 tifinfo <- tifinfo[-22,]
 
 TILs <- as.factor(as.character(ifelse(tifinfo$TILs %in% c("T0", "T1"), "low", "high")))
+TILsOri <-  factor(as.character(tifinfo$TILs), levels=c("T3", "T2", "T1", "T0"))
 diag <-  as.factor(as.character(tifinfo$diag))
+#diag <- ifelse(tifinfo$diag == "LumA", "Luminal", as.character(tifinfo$diag))
+#diag <- as.factor(as.character(ifelse(diag == "HER2", "Her2", as.character(diag))))
+
 #tp <-  as.factor(as.character(tifinfo$tp))
 #receptor_status <-  as.factor(as.character(tifinfo$receptor_status))
 pool <-  as.factor(as.character(paste0("p",tifinfo$pool)))
@@ -54,6 +57,7 @@ ER <- as.factor(as.character(tifinfo$ER))
 PGR <- as.factor(as.character(tifinfo$PGR))
 AR <- as.factor(as.character(tifinfo$AR))
 HER2 <- as.factor(as.character(tifinfo$HER2))
+HER2Sim <- as.factor(ifelse(tifinfo$HER2 %in% c("H0", "H1"), "low", "high"))
 MFS <- as.factor(ifelse(is.na(tifinfo$Outcome), 0, 1))
 
 # NUMBER OF NA's PER ROW - REMOVE THE PROTEINS WITH MORE THAN 12 NA's.
@@ -78,37 +82,62 @@ setwd(paste0(my.wd,"/Backgrounds_and_Databases/"))
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# LOADING PLASMA PROTEOMICS FROM Farrah et. al.
+#  LOADING BREAST CANCER EXOSOMAL PROTEINS FROM EXOCARTA
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ExosomesAll <- read.delim("Exocarta/ExocartaDBUniprotAll.txt", header = TRUE)
+ExosomesAllU <- unique(as.character(ExosomesAll$Uniprot))
+ExosomesAllG <- unique(as.character(ExosomesAll$Names))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# LOADING BREAST CANCER PLASMA PROTEINS FROM Lagache et al.
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-
-plasma <- read.xlsx("plasma.xlsx", sheet = 2, colNames = TRUE, rowNames = FALSE)
-plasma <- sort(plasma$identifier)
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# LOADING BREAST CANCER SECRETED PROTEOMICS FROM Mann et. al.
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-secreted <- read.table("secretome.txt", header=TRUE)
-secreted <- unique(sort(as.character(secreted$uniprot)))
-
+PlasmaMP  <- read.delim("Braga_Lagache_MVplasma.txt", header = TRUE)
+PlasmaMPU  <- unique(as.character(PlasmaMP$Uniprot))
+PlasmaMPG  <- unique(as.character(PlasmaMP$Names))
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# LOADING EXSOSOMES Willms et. al.
+# LOADING BREAST CANCER SECRETED PROTEINS FROM Boersma et al.
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-exosomes <- as.character(read.table("exosomes.txt")$V1)
+
+SecretedBoer  <- read.delim("Boersema/protein_secreted_Boersema.txt", header = TRUE)
+SecretedBoerU <- unique(as.character(SecretedBoer$Uniprot))
+SecretedBoerG <- unique(as.character(SecretedBoer$Names))
+
+#PlasmaBoer  <- read.delim("Boersema/BoersemaPlasma.txt", header = TRUE)
+#PlasmaBoerU <- unique(as.character(PlasmaBoer$Uniprot))
+#PlasmaBoerG <- unique(as.character(PlasmaBoer$Names))
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# LOADING BREAST CANCER PLASMA PROTEINS FROM PEPTIDE ATLAS
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Plasma  <- read.delim("PlasmaDB/PlasmaPeptideAtlas_HUPOConcat.txt", header = TRUE)
+PlasmaU <- unique(as.character(Plasma$Uniprot))
+PlasmaG <- unique(as.character(Plasma$Names))
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# LOADING BREAST CANCER TIF PROTEOMICS FROM Yates et al.
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+TIFYates  <- read.delim("YatesTIF/TIFYates.txt", header = TRUE)
+TIFYatesU <- unique(as.character(TIFYates$Uniprot))
+TIFYatesG <- unique(as.character(TIFYates$Names))
+
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # LOADING BREAST CANCER N-GLYCOSYLATED PROTEOMICS FROM Mann et. al.
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-nglyco <- read.table("N_glyco.txt",header = TRUE)
-nglyco <- unique(sort(as.character(nglyco$uniprot)))
-nglyco <- nglyco[nglyco %in% secreted]
+#nglyco <- read.table("N_glyco.txt",header = TRUE)
+#nglyco <- unique(sort(as.character(nglyco$uniprot)))
+#nglyco <- nglyco[nglyco %in% secreted]
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -147,13 +176,6 @@ load("go.hs.gsets.RData")
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# LODING DATASET FOR DE COMPARISON
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-AllDatasets <- read.delim("")
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # LODING PAM50 genes
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -166,7 +188,8 @@ pam50 <- c("ACTR3B", "ANLN", "BAG1", "BCL2", "BIRC5", "BLVRA", "CCNB1", "CCNE1",
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 colorcode_receptor <- c("#F8766D", "#FD61D1", "#B983FF", "#00BA38", "#00BCD8")
-colorcode_diag <- c("#FD61D1","#00B0F6","#00BF7D")
+#colorcode_diag <- c("#FD61D1","#00B0F6","#00BF7D")
+colorcode_diag <- c("#FAA275","#DDDC71", "#BF5454")
 #colorcode_diag_new <- c("#FD61D1","#00B0F6","#00BF7D", "#B983FF")
 
 

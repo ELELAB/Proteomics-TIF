@@ -15,10 +15,10 @@ library(heatmap.plus)
 library(reshape)
 library(VennDiagram)
 library(gdata) 
-#library(topGO)
+library(topGO)
 library(biomaRt)
-#library(GOSim)
-#library(corrplot)
+library(GOSim)
+library(corrplot)
 #library(pvclust)
 library(stringr)
 library(plyr)
@@ -80,7 +80,7 @@ GOobject <-function(ont, univ, intpro, GO_background){
   geneList = factor(as.integer(univ%in%intpro))
   names(geneList) = univ
   #new topgo object
-  GOdata = new("topGOdata", ontology = as.character(ont), allGenes = geneList, annot = annFUN.GO2genes, GO2genes=GO_background)
+  GOdata = new("topGOdata", ontology = as.character(ont), nodeSize = 5, allGenes = geneList, annot = annFUN.GO2genes, GO2genes=GO_background)
   return(GOdata)
 }  
 
@@ -97,24 +97,15 @@ GOobject <-function(ont, univ, intpro, GO_background){
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-TOPGO <- function(ont, univ, intpro, GO_background, nterms) {
+TOPGO <- function(ont, univ, intpro, GO_background, nnodes) {
   
   GOdata <- GOobject(ont, univ, intpro, GO_background)
-  test.stat = new("classicCount", testStatistic = GOFisherTest, name = "Fisher test")
-  resultFisher = getSigGroups(GOdata, test.stat)
-  test.stat = new("elimCount", testStatistic = GOFisherTest, name = "Fisher test", cutOff = 0.01)
-  resultElim = getSigGroups(GOdata, test.stat)
+  resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
+  resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks")
+  resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks")
+  allRes <- GenTable(GOdata, classicFisher = resultFisher, classicKS = resultKS, elimKS = resultKS.elim, topNodes=nnodes)
   
-  res <- GenTable(GOdata, fisher = resultFisher, elim = resultElim, orderBy = "elim", ranksOf = "elim", topNodes = nterms)
-  
-  # pvalue correction
-  FDR_fisher <- data.frame(p.adjust(res$fisher, method = "fdr", n = nrow(res)))
-  colnames(FDR_fisher) <- "FDR_fisher"
-  FDR_elim <- data.frame(p.adjust(res$elim, method = "fdr", n = nrow(res)))
-  colnames(FDR_elim) <- "FDR_elim"
-  
-  res=cbind(res, FDR_fisher, FDR_elim)
-  return(res)
+  return(allRes)
 }
 
 
@@ -123,7 +114,7 @@ TOPGO <- function(ont, univ, intpro, GO_background, nterms) {
 # Function that creates barplot. Input is results of TOPGO
 
 barplot_func <- function(res) {
-  temp <- data.frame(res$Term, log2(1/as.numeric(res$fisher)))
+  temp <- data.frame(res$Term, log2(1/as.numeric(res$classicFisher)))
   colnames(temp) <- c("Term", "Inverse.Rank")
   temp$Term <- factor(temp$Term, levels=as.vector(temp$Term))
   ggplot(data=temp, aes(x=Term, y=Inverse.Rank)) + geom_bar(stat="identity", fill="#00BCD8") + theme(axis.text.x  = element_text(angle=90, vjust=0.5, size=12))
@@ -144,6 +135,52 @@ corrplot_func <- function(res) {
 
 
 
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# GENE ONTOLOGY VISUALIZATION:
+# takes as arguments:
+# my.proteins = list of uniprot IDs
+# my.univers = a protein univers
+# GO_background = GO-background (list object where proteins are coupled to GO-terms) and nterms = number of GO hits to display.
+# nterms = number of terms to return
+# filename = name of ourput
+# if my.barp = TRUE and/or my.corrp = TRUE a barplot and a corrplot will be generated
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+GO_visual <- function(my.proteins, my.univers, GO.background, nterms, filename, my.barp, my.corrp) {
+  p <- sort(as.character(my.proteins))
+  GO <- TOPGO("BP", my.univers, p, GO.background, nterms)
+  if (my.barp == TRUE) {
+    pdf(filename = paste0(filename, "_barplot.pdf"), height = 600, width = 1000)
+    barplot_func(GO)
+    dev.off()
+  }
+  if (my.corrp == TRUE) {
+    pdf(filename = paste0(filename, "_corrplot.pdf"), height = 800, width = 1200)
+    corrplot_func(GO) 
+    dev.off()
+  }
+  return(GO)
+}
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+GO_map_to <- function(humanGO, my.GOs, my.proteins.vector, my.gene.vector) {
+  mappedunip <- lapply(my.GOs$GO.ID, function(x) intersect(sort(as.character(my.proteins.vector)), sort(as.character(humanGO[humanGO$V5 %in% x,]$V2))))
+  mappedunip <- do.call(rbind,lapply(mappedunip, function(x) paste(x, collapse = ",")))
+  my.GOs$uniprot <- as.character(mappedunip[,1])
+  mappedgene <- lapply(my.GOs$GO.ID, function(x) intersect(sort(as.character(my.gene.vector)), sort(as.character(humanGO[humanGO$V5 %in% x,]$V3))))
+  mappedgene <- do.call(rbind,lapply(mappedgene, function(x) paste(x, collapse = ",")))
+  my.GOs$symbol <- as.character(mappedgene[,1])
+  return(my.GOs)
+}
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
 
 
 # ------------------------------------------------------------------------------------------
@@ -157,11 +194,17 @@ corrplot_func <- function(res) {
     # my.tp = tumor percentage of sample
     # my.tils = TILs (level of infiltrating lymphocytes in sample).
 
-combat_corrections <- function(my.data, my.group, my.pool, my.tils=NULL){
+combat_corrections <- function(my.data, my.group, b1=NULL, b2=NULL){
   mod_design <- model.matrix(~as.factor(my.group))
-  batch_corr <- ComBat(as.matrix(my.data), as.factor(my.pool), mod_design, par.prior=TRUE,prior.plots=FALSE)
-  if (!is.null(my.tils)) {
-    batch_corr <- ComBat(batch_corr, as.factor(my.tils), mod_design, par.prior=TRUE,prior.plots=FALSE)
+  if(is.null(b1) & is.null(b2)) {
+    batch_corr <- my.data
+  } else if (!is.null(b1) & is.null(b2)) {
+    batch_corr <- ComBat(as.matrix(my.data), as.factor(b1), mod_design, par.prior=TRUE,prior.plots=FALSE)
+  } else if (is.null(b1) & !is.null(b2)) {
+    batch_corr <- ComBat(as.matrix(my.data), as.factor(b2), mod_design, par.prior=TRUE,prior.plots=FALSE)
+  } else {
+    batch_corr <- ComBat(as.matrix(my.data), as.factor(b1), mod_design, par.prior=TRUE,prior.plots=FALSE)
+    batch_corr <- ComBat(batch_corr, as.factor(b2), mod_design, par.prior=TRUE,prior.plots=FALSE)
   }
   return(batch_corr)
 }
@@ -321,69 +364,6 @@ tree <- function(dataset, nc, colorcode, colorby) {
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# GENE ONTOLOGY VISUALIZATION:
-# takes as arguments:
-    # my.proteins = list of uniprot IDs
-    # my.univers = a protein univers
-    # GO_background = GO-background (list object where proteins are coupled to GO-terms) and nterms = number of GO hits to display.
-    # nterms = number of terms to return
-    # filename = name of ourput
-    # if my.barp = TRUE and/or my.corrp = TRUE a barplot and a corrplot will be generated
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-GO_visual <- function(my.proteins, my.univers, GO.background, nterms, filename, my.barp, my.corrp) {
-  p <- sort(as.character(my.proteins))
-  GO <- TOPGO("BP", my.univers, p, GO.background, nterms)
-  if (my.barp == TRUE) {
-    png(filename = paste0(filename, "_barplot.png"), height = 600, width = 1000)
-    barplot_func(GO)
-    dev.off()
-    }
-  if (my.corrp == TRUE) {
-    png(filename = paste0(filename, "_corrplot.png"), height = 800, width = 1200)
-    corrplot_func(GO) 
-    dev.off()
-    }
-  return(GO)
-}
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-GO_map_to <- function(humanGO, my.GOs, my.proteins.vector, my.gene.vector) {
-  mappedunip <- lapply(my.GOs$GO.ID, function(x) intersect(sort(as.character(my.proteins.vector)), sort(as.character(humanGO[humanGO$V5 %in% x,]$V2))))
-  mappedunip <- lapply(mappedunip, function(x) paste(x, collapse = ","))
-  my.GOs$uniprot <- mappedunip
-  mappedgene <- lapply(my.GOs$GO.ID, function(x) intersect(sort(as.character(my.gene.vector)), sort(as.character(humanGO[humanGO$V5 %in% x,]$V3))))
-  mappedgene <- lapply(mappedgene, function(x) paste(x, collapse = ","))
-  my.GOs$symbol <- mappedgene
-  return(my.GOs)
-}
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# PRINCIPAL COMPONENT ANALYSIS:
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-# Function that creates a rotation object
-
-rotation_func <- function(my.data) {
-  pca <- prcomp(t(my.data), center = TRUE, scale=TRUE)
-  rotation <- data.frame(pca$rotation)
-  return(rotation)
-}
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # BOXPLOT VISUALIZATION:
 # takes as arguments:
     # my.data = abundance/expresssion data
@@ -404,6 +384,319 @@ boxplots <- function(my.data, my.group, my.colors) {
 
 
 
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUNCTION FOR LASSO REGRESSION
+# Takes as arguments:
+# my.seed = A random seed
+# my.data = matrix of countes/expression/abundance
+# my.groups = vector of group IDs, must be as.factor()
+# my.validation = TRUE or FALSE
+# my.multinorm = TRUE or FALSE
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+LASSO_Features <- function(my.seed, my.data, my.group, my.validation=FALSE, my.multinorm=TRUE) {
+  
+  if (my.validation == TRUE) {
+    
+    ll <- list()
+    llev <- levels(as.factor(my.group))
+    
+    for (idx in 1:length(llev)) {
+      pos <- which(my.group == as.character(llev[idx]))
+      ll[[idx]] <- pos
+    }
+    
+    set.seed(5)
+    my.samp <- unlist(lapply(ll, function(x) sample(x, ceiling((length(x)/4)))))
+    
+    
+    my.data.val <- my.data[,my.samp]
+    my.group.val <- my.group[my.samp]
+    
+    my.data <- my.data[,-my.samp]
+    my.group <- my.group[-my.samp]
+  }
+  
+  if(my.multinorm == TRUE) {
+    set.seed(my.seed)
+    my.fit <- cv.glmnet(x = t(my.data), y = my.group, family="multinomial", type.multinomial = "grouped", nfolds = 10, alpha = 0.9, parallel=TRUE, keep = TRUE)
+    my.coef <- coef(my.fit, s=my.fit$lambda.1se)
+    my.ma <- as(my.coef[[1]], "matrix")
+  } else {
+    set.seed(my.seed)
+    my.fit <- cv.glmnet(x = t(my.data), y = my.group, family = "binomial", type.measure = "class", nfolds = 10, alpha = 0.9, keep = TRUE)
+    my.coef <- coef(my.fit, s=my.fit$lambda.1se)
+    my.ma <- as(my.coef, "matrix")
+  }
+  
+  my.err <- as.numeric(my.fit$cvm[my.fit$lambda == my.fit$lambda.min])
+  my.imp <- my.ma
+  my.vars <- names(my.ma[my.ma[,1] != 0, ])
+  
+  if (my.validation == TRUE) {
+    my.pred <- predict(my.fit, t(my.data.val), s=my.fit$lambda.1se, type="class")
+    my.group.val <- as.factor(my.group.val)
+    my.pred <- factor(my.pred[,1], levels = levels(my.group.val))
+    my.pred <- confusionMatrix(my.pred, my.group.val)
+    res <- list(my.fit, my.vars, my.imp, my.err, my.pred)
+    
+  } else {
+    res <- list(my.fit, my.vars, my.imp, my.err, NA)
+  }
+  return(res)
+}
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUNCTION FOR APPLYING LASSO OVER DIFFERENT SEEDS.
+# Takes as arguments:
+# my.data = matrix of countes/expression/abundance
+# my.groups = vector of group IDs, must be as.factor()
+# my.validation = TRUE or FALSE
+# my.multinorm = TRUE or FALSE
+# b1 and b2 = two batch variables
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+LASSO_Apply <- function(my.data, my.group, my.validation, my.multinorm, b1=NULL, b2=NULL){
+  
+  if(is.null(b1) & is.null(b2)) {
+    my.data <- my.data
+  } else {
+    my.data <- combat_corrections(my.data, my.group, b1, b2)
+  }
+  
+  seeds <- c(1, 40, 99, 640, 6565)
+  #seeds <- c(1, 41, 100, 641, 6566)
+  
+  LAvars <- list()
+  LAimp <- list()
+  LAerr <- list()
+  #LAclass <- list()
+  LAacc <- list()
+  
+  
+  for (idx in 1:length(seeds)) {
+    LA <- LASSO_Features(seeds[[idx]], my.data, my.group, my.validation, my.multinorm)
+    LAvars[[idx]] <-  LA[[2]]
+    imp <-  data.frame(LA[[3]])
+    imp[,1] <- abs(imp[,1])
+    LAimp[[idx]] <- imp
+    LAerr[[idx]] <-  LA[[4]]
+    
+    if(my.validation == TRUE) {
+      LAacc[[idx]] <-  LA[[5]]$overall[c(3,1,4)]
+      #LAclass[[idx]] <-  as.numeric(LA[[5]]$class)
+    } else {
+      #LAclass[[idx]] <-  NA
+      LAacc[[idx]] <- NA
+    }
+    print(paste0(idx, " out of ", length(seeds), " runs completed."))
+  }
+  
+  
+  all.df <- LAimp[[1]]
+  
+  for (idx in 2:length(LAimp)) {
+    all.df <- all.df+LAimp[[idx]]
+  }
+  
+  LAimp <- all.df/length(LAimp)
+  LAimp$Accession <- rownames(LAimp)
+  
+  LAvars <- unique(unlist(LAvars))[-1]
+  
+  LAimp <- LAimp[LAimp$Accession %in% LAvars,]
+  LAimp <- LAimp[order(LAimp$X1, decreasing = TRUE),]
+  
+  LAres <- list(LAvars, LAimp, mean(unlist(LAerr)), do.call(rbind, LAacc))
+  names(LAres) <- c("Vars", "Importance", "CV.Error", "Accuracy")
+  #LAres <- list(LAvars, LAimp, mean(unlist(LAerr)), unlist(LAclass), mean(unlist(LAclass)), do.call(rbind, LAacc))
+  #names(LAres) <- c("Vars", "Importance", "CV.Error", "Class.Err", "Class.Err.Mean", "Accuracy")
+  return(LAres)
+}    
+
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUNCTION FOR AVERAGING VARIABLES ACROSS LASSO RUNS.
+# Takes as arguments:
+# list.of.lassos = list of LASSO regressions
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+AverageWeight <- function(list.of.lassos) {
+  
+  if(class(list.of.lassos[[1]])=="list") {
+    all.lassos <- list.of.lassos[[1]]$Importance
+    
+    for (idx in 2:length(list.of.lassos)) {
+      all.lassos <- merge(all.lassos, list.of.lassos[[idx]]$Importance, by = "Accession", all.x = TRUE, all.y =TRUE)
+    }
+  } else {
+    all.lassos <- list.of.lassos[[1]]
+    
+    for (idx in 2:length(list.of.lassos)) {
+      all.lassos <- merge(all.lassos, list.of.lassos[[idx]], by = "Accession", all.x = TRUE, all.y =TRUE)
+    }
+  }
+  all.lassos$weight <- rowMeans(all.lassos[,-1], na.rm = TRUE)
+  all.lassos <- all.lassos[order(all.lassos$weight, decreasing = TRUE),]
+  return(all.lassos)
+}
+
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUNCTION FOR RANDOM FOREST
+# Takes as arguments:
+# my.seed = A random seed
+# my.data = matrix of countes/expression/abundance
+# my.groups = vector of group IDs, must be as.factor()
+# my.validation = TRUE or FALSE
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Forest_Features <- function(my.seed, my.data, my.group, my.validation=FALSE) {
+  
+  if (my.validation == TRUE) {
+    
+    ll <- list()
+    llev <- levels(as.factor(my.group))
+    
+    for (idx in 1:length(llev)) {
+      pos <- which(my.group == as.character(llev[idx]))
+      ll[[idx]] <- pos
+    }
+    
+    set.seed(5)
+    my.samp <- unlist(lapply(ll, function(x) sample(x, ceiling((length(x)/4)))))
+    
+    my.data.val <- t(my.data[,my.samp])
+    my.group.val <- my.group[my.samp]
+    
+    my.data <- t(my.data[,-my.samp])
+    my.group <- my.group[-my.samp]
+    
+    set.seed(my.seed)
+    RFvars <- varSelRF(my.data, my.group, ntree=3000, ntreeIterat=1500, vars.drop.frac=0.2)
+    set.seed(my.seed)
+    RFforest <- randomForest(my.data, my.group, ntree=3000, ntreeIterat=1500, vars.drop.frac=0.2)
+    pred <- predict(RFforest, newdata = my.data.val)
+    RFpred <- confusionMatrix(pred, my.group.val)
+    
+    res <- list(RFvars, RFpred, RFforest)
+    
+  } else {
+    my.data <- t(my.data)
+    set.seed(my.seed)
+    RFvars <- varSelRF(my.data, my.group, ntree=3000, ntreeIterat=1500, vars.drop.frac=0.2)
+    
+    res <- list(RFvars, NA)
+  }
+  return(res)
+}
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUNCTION FOR APPLYING RANDOM FOREST OVER DIFFERENT SEEDS.
+# Takes as arguments:
+# my.data = matrix of countes/expression/abundance
+# my.groups = vector of group IDs, must be as.factor()
+# my.validation = TRUE or FALSE
+# b1 and b2 = two batch variables
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+RF_Apply <- function(my.data, my.group, my.validation, b1=NULL, b2=NULL){
+  
+  if(is.null(b1) & is.null(b2)) {
+    my.data <- my.data
+  } else if(!is.null(b1) & is.null(b2)) {
+    my.data <- combat_corrections(my.data, my.group, b1)
+  } else if(is.null(b1) & !is.null(b2)) {
+    my.data <- combat_corrections(my.data, my.group, b2)
+  } else {
+    my.data <- combat_corrections(my.data, my.group, b1, b2)
+  }
+  
+  seeds <- c(1, 40, 99, 640, 6565)
+  #seeds <- c(1, 41, 100, 641, 6566)
+  
+  RFvars <- list()
+  RFobb <- list()
+  RFclass <- list()
+  RFacc <- list()
+  RFimp <- list()
+  
+  for (idx in 1:length(seeds)) {
+    RF <- Forest_Features(seeds[[idx]], my.data, my.group, my.validation)
+    RFvars[[idx]] <-  RF[[1]]$selected.vars
+    RFobb[[idx]] <-  median(RF[[1]]$firstForest$err.rate[,1])
+    RFclass[[idx]] <-  RF[[1]]$firstForest$confusion
+    RFimp[[idx]] <-  RF[[1]]$firstForest$importance
+    
+    if(class(RF[[2]]) == "confusionMatrix") {
+      RFacc[[idx]] <- RF[[2]]$overall[c(1,3,4)]
+    } else {
+      RFacc[[idx]] <- NA
+    }
+    print(paste0(idx, " out of ", length(seeds), " runs completed."))
+  }
+  
+  
+  all.df <- RFimp[[1]]
+  
+  for (idx in 2:length(RFimp)) {
+    all.df <- all.df+RFimp[[idx]]
+  }
+  
+  RFimp <- all.df/length(RFimp)
+  
+  
+  RFres <- list(unlist(RFvars), unlist(RFobb), RFclass, do.call(rbind, RFacc), RFimp)
+  names(RFres) <- c("Vars", "Obb", "Class", "Accuracy", "Importance")
+  return(RFres)
+}    
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUNCTION FOR AVERAGING VARIABLES ACROSS RF RUNS.
+# Takes as arguments:
+# list.of.rfs = list of random forests
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+AverageWeight <- function(list.of.rfs) {
+  
+  if(class(list.of.rfs[[1]])=="list") {
+    
+    list.of.dfs <- lapply(list.of.rfs, function(x) x$Importance)
+    list.of.rfs <- list()
+    
+    for (idx in 1:length(list.of.dfs)) {
+      df <- data.frame(list.of.dfs[[idx]])[]
+      df$Accession <- rownames(df)
+      n <- ncol(df)
+      list.of.rfs[[idx]] <- df[, c(n,(n-1))]
+    }
+  }
+  all.rfs <- list.of.rfs[[1]]
+  for (idx in 2:length(list.of.rfs)) {
+    all.rfs <- merge(all.rfs, list.of.rfs[[idx]], by="Accession", all.x = TRUE, all.y =TRUE)
+  }
+  all.rfs$weight <- rowMeans(all.rfs[,-1], na.rm = TRUE)
+  all.rfs <- all.rfs[order(all.rfs$weight, decreasing = TRUE),]
+  return(all.rfs)
+}
+
+
+
+
+
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PATHWAY ENRICHMENT ANALYSIS:
 # takes as arguments:
@@ -416,12 +709,14 @@ boxplots <- function(my.data, my.group, my.colors) {
 
 
 
-enrich_pathway <- function(background, my.u2e.map, my.proteins, my.name, my.plot) {
-  entrez.data <- my.u2e.map[my.u2e.map$uniprot %in% my.proteins, ]
-  my.pathway <- enrichPathway(as.character(entrez.data$entrez), organism = "human", pvalueCutoff = 0.05, pAdjustMethod = "fdr", qvalueCutoff = 0.05, as.character(background$entrez), minGSSize = 3, readable = T)
+enrich_pathway <- function(background, my.proteins, my.name, my.plot) {
+  ensembl <- useMart('ensembl', dataset = "hsapiens_gene_ensembl")
+  entrez.data <- unique(sort(as.character(getBM(attributes=c("uniprotswissprot", "entrezgene_id"), filters="uniprotswissprot", values=my.proteins, mart=ensembl)$entrezgene_id)))
+  my.pathway <- enrichPathway(entrez.data, organism = "human", pvalueCutoff = 0.05, pAdjustMethod = "fdr", qvalueCutoff = 0.05, background, minGSSize = 3, readable = T)
   if (my.plot == TRUE) {
-    pdf(filename = paste0(my.name,".pdf"), height = 800, width = 1200)
-    cnetplot(my.pathway, categorySize="pvalue")
+    pdf(paste0(my.name,".pdf"), height = 8, width = 12)
+    p <- cnetplot(my.pathway, categorySize="pvalue")
+    print(p)
     dev.off()
   }
   return(my.pathway)
@@ -430,12 +725,11 @@ enrich_pathway <- function(background, my.u2e.map, my.proteins, my.name, my.plot
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# FUNCTION FOR RANDOM FOREST
+# FUNCTION FOR RANDOM FOREST CONVERGENCE
 # Takes as arguments:
 # my.seed = A random seed
 # my.data = matrix of countes/expression/abundance
 # my.groups = vector of group IDs, must be as.factor()
-# my.nhits = Number of hits to return from RF ranking.
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -448,54 +742,6 @@ my_forest_conver <- function(my.seed, my.data, my.groups) {
 }
 
 
-my_forest <- function(my.seed, my.data, my.groups) {
-  set.seed(my.seed)
-  rfsel <- varSelRF(my.data, my.groups, ntree=3000, ntreeIterat=1500, vars.drop.frac=0.2)
-  res <- rfsel$selected.vars
-  return(res)
-}
-
-
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# FUNCTION FOR LASSO REGRESSION
-# Takes as arguments:
-# my.seed = A random seed
-# my.data = matrix of countes/expression/abundance
-# my.groups = vector of group IDs, must be as.integer()
-# If my.multinorm=TRUE the my.groups vector has > 2 groups, else my.multinorm=FALSE which will result in binomial regression.
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-LASSO_protein <- function(my.seed, my.data, my.group, my.multinorm=TRUE) {
-  # orginal seed was 1011
-  if(my.multinorm == TRUE) {
-    set.seed(my.seed)
-    my.fit <- cv.glmnet(x = t(my.data), y = my.group, family="multinomial", type.multinomial = "grouped", nfolds = 10)
-    my.coef <- coef(my.fit, s=my.fit$lambda.min)
-    my.ma <- as(my.coef$`1`, "matrix")
-    rm(my.fit)
-    rm(my.coef)
-  }
-  else {
-    set.seed(my.seed)
-    my.fit <- cv.glmnet(x = t(my.data), y = my.group, family = "binomial", type.measure = "class", nfolds = 10)
-    my.coef <- coef(my.fit, s=my.fit$lambda.min)
-    my.ma <- as(my.coef, "matrix")
-    rm(my.fit)
-    rm(my.coef)
-  }
-  my.ma <- names(my.ma[my.ma[,1] != 0, ])
-  #my.ma <- my.data[rownames(my.data) %in% my.ma, ]
-  return(my.ma[-1])
-}
-
-
-
-
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Plot UpSetR
 # Takes as arguments;
@@ -505,8 +751,6 @@ LASSO_protein <- function(my.seed, my.data, my.group, my.multinorm=TRUE) {
 # my.cols = colors vector with as, one color per set
 # if my.plot= TRUE a pdf is writen out, og write.ids = TRUE, write out intersection of all sets
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 
 plot_upsetR <- function(list.of.sets, my.intersection, my.name, my.cols, my.plot, write.ids) {
   full.set <- data.frame(unique(sort(c(unlist(list.of.sets)))))
@@ -518,7 +762,10 @@ plot_upsetR <- function(list.of.sets, my.intersection, my.name, my.cols, my.plot
   metadata <- data.frame("sets" = colnames(full.set)[-1], "sets2" = colnames(full.set)[-1])
   if (my.plot==TRUE) {
     pdf(paste0(my.name, ".pdf"), height = 6, width = 10)
-    upset(full.set, sets=colnames(full.set)[2:ncol(full.set)], sets.bar.color = my.cols, set.metadata = list(data = metadata, plots = list(list(type="matrix_rows", column = "sets", colors = c("TIF" = my.cols[1], "Nglyco" = my.cols[2], "Plasma" = my.cols[3], "Secreted"=my.cols[4], "Exosomes"=my.cols[5]), alpha = 0.5))), order.by = "freq", text.scale = 1.7, keep.order = TRUE) 
+    my.combination <- my.cols
+    names(my.combination) <- my.intersection
+    p <- upset(full.set, sets=colnames(full.set)[2:ncol(full.set)], sets.bar.color = my.cols, set.metadata = list(data = metadata, plots = list(list(type="matrix_rows", column = "sets", colors = my.combination, alpha = 0.5))), order.by = "freq", text.scale = 1.7, keep.order = TRUE) 
+    print(p)
     dev.off()
   }
   if (write.ids == TRUE) {
@@ -527,7 +774,6 @@ plot_upsetR <- function(list.of.sets, my.intersection, my.name, my.cols, my.plot
   } 
   return(full.set)
 }
-
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -540,8 +786,8 @@ plot_upsetR <- function(list.of.sets, my.intersection, my.name, my.cols, my.plot
 
 uniprot_to_name <- function(my.vector) {
   ensembl <- useMart('ensembl', dataset = "hsapiens_gene_ensembl")
-  annot1 <- getBM(attributes=c("uniprotswissprot", "hgnc_symbol", "uniprot_gn"), filters="uniprotswissprot", values=my.vector, mart=ensembl)
-  annot1$uniprot_gn <- NULL
+  annot1 <- getBM(attributes=c("uniprotswissprot", "hgnc_symbol", "uniprot_gn_id"), filters="uniprotswissprot", values=my.vector, mart=ensembl)
+  annot1$uniprot_gn_id <- NULL
   colnames(annot1) <- c("Accession", "name")
   annot2 <- hugo[hugo$Accession %in% my.vector, ]
   annot2[3] <- NULL
@@ -857,5 +1103,19 @@ Overlap_GOplot <- function(my.set, my.lfc.cols, my.rib.cols) {
   my.set$name <- NULL
   my.set$Accession <- NULL
   my.set$logFC <- rnorm(nrow(my.set), 0, 2)
-  GOChord(as.matrix(my.set), lfc.col = my.lfc.cols, ribbon.col = my.rib.cols)
+  remove <- grep("^$", rownames(my.set))
+  if(length(remove) > 0) {
+    my.set <- my.set[-remove,]
+  }
+  GOChord(as.matrix(my.set), lfc.col = my.lfc.cols, ribbon.col = my.rib.cols, border.size = 0.1)
+}
+
+
+# Get p-values of Ordinal Logistic Regression
+OLR_pval <- function(model) {
+  ctable <- coef(summary(model))
+  p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
+  #p <- p.adjust(p, method = "fdr", n = 10)
+  ctable <- cbind(ctable, "p value" = p)
+  return(ctable)
 }

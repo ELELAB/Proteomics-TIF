@@ -14,7 +14,7 @@
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-my.wd <- "~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/"
+my.wd <- ""
 
 setwd(paste0(my.wd, "/Data/"))
 
@@ -22,41 +22,27 @@ setwd(paste0(my.wd, "/Data/"))
 # GET UNIPROT ID - GENE ID
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 tif_full_id <- as.character(sort(rownames(tifdata_small)))
-tif_full_name <- unique(uniprot_to_name(tif_full_id)$name)
 tif_full  <- unique(uniprot_to_name(tif_full_id))
-
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# GET OVERLAP BETWEEN PLASMA; SECRETED N-GLYCOSYLATED AND TIF.
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-nglyco_name <- unique(uniprot_to_name(nglyco)$name)
-secreted_name <- unique(uniprot_to_name(secreted)$name)
-plasma_name <- unique(uniprot_to_name(plasma)$name)
-exosomes_name <- sort(as.character(exosomes))
-
-
-intsec.list <- list(tif_full_name, nglyco_name, plasma_name, secreted_name, exosomes_name)
-names(intsec.list) <- c("TIF", "Nglyco", "Plasma", "Secreted", "Exosomes")
-
-
-colov <- c("#08605F", "#177E89", "#598381","#8E936D", "#5D737E")
-highly_expressed <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Sec_Plasma_Nglyco", colov, TRUE, FALSE)
-
+tif_full_name <- unique(tif_full$name)
 
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# CONVERT PROTIEN ID TO GENE SYSMBOL AND OVERLAP WITH EXOSOMES FROM WILLMS et al.
+# OVERLAP TIF PROTEINS WITH PLASMA, EXOSOMES, SECRETED AND INDEPENDENT TIF SET
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-intsec.list <- list(tif_full_name, exosomes)
-names(intsec.list) <- c("TIF", "exosomes")
+intsec.list <- list(SecretedBoerU, tif_full_id, ExosomesAllU, PlasmaU, PlasmaMPU, TIFYatesU)
+names(intsec.list) <- c("Secreted", "TIF", "Exosomes", "Plasma", "PlasmaMP", "TIFYates")
 
-TIF_exo <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_Exosomes",  colov[c(1,2)], TRUE, FALSE)
+
+intsec.list <- list(SecretedBoerG, tif_full_name, ExosomesAllG, PlasmaG, PlasmaMPG, TIFYatesG)
+names(intsec.list) <- c("Secreted", "TIF", "Exosomes", "Plasma", "PlasmaMP", "TIFYates")
+
+
+
+colov <- c("#08605F", "#177E89", "#598381","#8E936D", "#5D737E", "#394053")
+highly_expressed <- plot_upsetR(intsec.list, names(intsec.list), "test2", colov, TRUE, FALSE)
 
 
 
@@ -71,6 +57,8 @@ names(intsec.list) <- c("TIF", "NIF", "FIF")
 
 TIF_NIF_FIF <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_NIF_FIF", colov[c(1,2)], TRUE, FALSE)
 
+venn <- venn.diagram(list(A=tif_full_id, B=nif_pooled_id, C=fif_pooled_id), category.names = c("TIF", "NIF_pooled", "FIF_pooled"), filename=NULL, lwd = 0.7, fill=rainbow(3), sub.cex = 2, cat.cex= 2, cex=1.5)
+grid.draw(venn)
 
 
 
@@ -78,15 +66,17 @@ TIF_NIF_FIF <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_NIF_FIF
 # GENE ONTOLOGY ENRICHMENT ANALTSIS OF OVERLAP BETWEEN TIF, NIF AND FIF:
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-proint_fifnif <- rbind(tif_full_fif, tif_full_nif)
-proint_fifnif <- as.vector(unique(proint_fifnif[order(proint_fifnif$overlap) , ]))
+tif_nif_fif <- unique(Reduce(intersect, list(tif_full_id, nif_pooled_id, fif_pooled_id)))
+tif_nif <- unique(intersect(tif_full_id, nif_pooled_id))
+tif_fif <- unique(intersect(tif_full_id, fif_pooled_id))
+nif_fif <- unique(intersect(nif_pooled_id, fif_pooled_id)) 
+nif_fif <- gsub(pattern = "-[0-9]", "", nif_fif)
 
-univ_fifnif <- c(fif_pooled_id, nif_pooled_id, rownames(tifdata_small))
-univ_fifnif <- unique(sort(univ_fifnif))
+prot_univ <- unique(sort(c(fif_pooled_id, nif_pooled_id, tif_full_id)))
 
-tif_nif_fif_GOobject <- GOobject("BP", univ_fifnif, proint_fifnif, GO_background) 
+tif_nif_fif_GOobject <- GOobject("BP", prot_univ, tif_nif_fif, GO_background) 
 
-tif_nif_fif_GO <- TOPGO("BP", univ_fifnif, proint_fifnif, GO_background, 50) 
+tif_nif_fif_GO <- TOPGO("BP", prot_univ, tif_nif_fif, GO_background, 50) 
 
 
 
@@ -106,6 +96,23 @@ corrplot_func(tif_nif_fif_GO)
 
 
 
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# PATHWAY ANALYSIS Overlap TIF, NIF, FIF
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ensembl <- useMart('ensembl', dataset = "hsapiens_gene_ensembl")
+univ_enz <- unique(sort(as.character(getBM(attributes=c("uniprotswissprot", "entrezgene_id"), filters="uniprotswissprot", values=prot_univ, mart=ensembl)$entrezgene_id)))
+#univ_nif_fif_enz <- unique(sort(as.character(getBM(attributes=c("uniprotswissprot", "entrezgene_id"), filters="uniprotswissprot", values=unique(sort(c(nif_pooled_id,fif_pooled_id))), mart=ensembl)$entrezgene_id)))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+pw_tif_nif_fif <- enrich_pathway(univ_enz, tif_nif_fif, "tif_nif_fif_overlap", my.plot = TRUE)
+pw_tif_nif <- enrich_pathway(univ_enz, tif_nif, "tif_nif_overlap", my.plot = TRUE)
+pw_tif_fif <- enrich_pathway(univ_enz, tif_fif, "tif_fif_overlap", my.plot = TRUE)
+pw_nif_fif <- enrich_pathway(univ_enz, nif_fif, "nif_fif_overlap", my.plot = TRUE)
+
+
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -119,16 +126,22 @@ corrplot_func(tif_nif_fif_GO)
 
 # MODEL ON DIAGNOSIS
 batch_corr_diag <- combat_corrections(tifdata_small, diag, pool)
+batch_corr_TILs <- combat_corrections(tifdata_small, TILs, pool)
 batch_corr_diag_TILs <- combat_corrections(tifdata_small, diag, pool, TILs)
 
 
 # MODEL ON RECEPTOR STATUS 
-batch_corr_receptor<- combat_corrections(tifdata_small, receptor_status, pool, TILs)
+#batch_corr_receptor<- combat_corrections(tifdata_small, receptor_status, pool, TILs)
 
 
 # MULTIDIMENSIONAL SCALING, LABELED BY EITHER DIAGNOSIS OR RECEPTOR STATUS
-myMDSplot(tifdata_small, diag, diag, colorcode_diag)
-myMDSplot(batch_corr_diag_TILs, diag, diag, colorcode_diag)
+myMDSplot(tifdata_small, diag, "", colorcode_diag)
+myMDSplot(batch_corr_diag, diag, "", colorcode_diag)
+myMDSplot(batch_corr_TILs, TILs, "", brewer.pal(3, "Blues")[-1])
+myMDSplot(batch_corr_diag_TILs, diag, "", colorcode_diag)
+
+
+
 
 myMDSplot(tifdata_small, receptor_status, receptor_status, colorcode_receptor)
 myMDSplot(batch_corr_receptor, receptor_status, receptor_status, colorcode_receptor)
@@ -151,6 +164,18 @@ pvrect(lab_check_receptor_status, alpha=0.90)
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Kmeans
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#optimal_nc(batch_corr_diag)
+set.seed(25)
+#C2 <- as.factor(paste0("C",as.factor(as.character(kmeans(t(batch_corr_diag), 2, iter.max = 100)$cluster))))
+C3 <- paste0("C",as.factor(as.character(kmeans(t(batch_corr_diag), 3, iter.max = 300)$cluster)))
+C3 <- factor(C3, levels = c("C3", "C2", "C1"))
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # HIERARCHICAL CLUSTERING
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -162,48 +187,43 @@ heat.cols <- viridis(n=100)
 my.spacer <- as.matrix(replicate(nrow(tifinfo), "white"))
 
 # Color schemes for heatmap
-my.TS <- get_colors(diag, colorcode_diag)
-my.ER <- get_colors(ER, c("seashell", "grey60"))
-my.PGR <- get_colors(PGR, c("seashell","grey60"))
-my.GR <- get_colors(Gr, c("navyblue", "lightblue"))
-my.TILS <- get_colors(TILs, c("orange", "yellow"))
+my.ER <- get_colors(ER, c("#FFFCF7", "grey60"))
+my.PGR <- get_colors(PGR, c("#FFFCF7", "grey60"))
+my.HER2 <- get_colors(HER2, c("#FFFCF7", brewer.pal(4,"Greys")[2:4]))
+my.GR <- get_colors(Gr, c("#032A63","#0071AA"))
+my.TILS <- get_colors(TILs, c("#032A63","#0071AA"))
+my.ST <- get_colors(diag, c("#FAA275","#DDDC71", "#BF5454"))
+my.C3 <- get_colors(C3, viridis(3, begin = 0.2, end =0.9))
 #my.Age <- get_colors(AgeITV, c(brewer.pal(3,"Purples")))
 #my.TP <- get_colors(tp, c(brewer.pal(4,"Reds")))
 #my.AR <- get_colors(AR, c("seashell","grey60"))
-#my.HER2 <- get_colors(as.factor(tifinfo$HER2), c(brewer.pal(4,"Greys")))
 #my.pool <- get_colors(pool, c("olivedrab","bisque3", "azure3", "seagreen"))
 
-my.cols <- cbind(my.TILS, my.spacer, my.GR, my.spacer, my.ER, my.spacer, my.PGR, my.spacer, my.TS)
+my.cols <- cbind(my.ST, my.ER, my.PGR, my.HER2, my.TILS, my.GR)
 
 pdf("proteinclusters.pdf")
-heatmap.plus(as.matrix(scale(batch_corr_diag , scale = FALSE)),col=heat.cols, hclustfun=function(d) hclust(d, method="ward.D2"), trace="none", Rowv = NA, labRow="", labCol="", ColSideColors=my.cols, margins = c(14,8), cexCol=1.2, cexRow = 1.3)
-legend("bottomleft", legend = levels(diag), ncol=1, lty=c(1,1), lwd=c(3,3), cex=0.7, col=colorcode_diag, bty = "n")
-legend("bottom", legend = c("High TILs", "Low TILs", "High Grade", "Low Grade", "ER+ & PGR+", "ER- & PGR-"), ncol=3, lty=c(1,1), lwd=c(3,3), cex=0.7, col=c("orange", "yellow", "navyblue", "lightblue", "grey60", "seashell"), bty = "n")
+heatmap.plus(as.matrix(scale(batch_corr_diag)),col=heat.cols, hclustfun=function(d) hclust(d, method="ward.D2"), trace="none", Rowv = NA, labRow="", labCol="", ColSideColors=my.cols, margins = c(14,8), cexCol=1.2, cexRow = 1.3)
+legend("bottomleft", legend = c(levels(diag), ""), ncol=1, lty=c(1,1), lwd=c(3,3), cex=0.7, col=c(colorcode_diag, "white"), bty = "n")
+legend("bottom", legend = c("TILs & Grade +1/0", "TILs & Grade +3/+2", "", "", "ER & PgR Neg.", "ER & PgR Pos.", "", "", "Her2 Neg.", "Her2 +1", "Her2 +2.", "Her2 +3"), ncol=3, lty=c(1,1), lwd=c(3,3), cex=0.7, col=c("#0071AA", "#032A63", "white", "white", "seashell", "grey60", "white", "white", c("seashell", brewer.pal(4,"Greys")[2:4])), bty = "n")
 dev.off()
 
 
 
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 dend <- as.dendrogram(hclust(dist(t(batch_corr_diag)), method = "ward.D2"))
 
-# Color scheme
-my.ER <- get_colors(ER, c("#FFFCF7", "grey60"))
-my.PGR <- get_colors(PGR, c("#FFFCF7", "grey60"))
-my.AR <- get_colors(AR, c("#FFFCF7", "grey60"))
-my.GR <- get_colors(Gr, c("#032A63","#0071AA"))
-my.TILS <- get_colors(TILs, c("#032A63","#0071AA"))
-my.ST <- get_colors(diag, c("#BF5454", "#FFFD82","#FAA275"))
 
-pdf("Dendogram.pdf", height = 10, width = 10)
+pdf("Dendogram.pdf", height = 10, width = 12)
 par(mar=c(10,1,1,1))
 lefcol <- c(rep("#0071AA", 14), rep("#032A63", 20))
 dend %>%
-  set("labels_col", value = c("#0071AA", "#032A63"), k=2) %>%
-  set("branches_k_color", value = c("#0071AA", "#032A63"), k = 2) %>%
+  set("labels_col", value = brewer.pal(6, "Blues")[-c(1:3)], k=3) %>%
+  set("branches_k_color", value =  brewer.pal(6, "Blues")[-c(1:3)], k = 3) %>%
   set("leaves_pch", 19)  %>% set("leaves_cex", 0.7) %>% set("leaves_col", lefcol) %>% plot()
 # Add the colored bar
-colored_bars(cbind(my.ST, my.ER, my.PGR, my.AR, my.TILS, my.GR), dend, rowLabels = c("Subtype", "ER", "PGR", "AR", "TILs", "Grade"))
+colored_bars(cbind(my.ST, my.ER, my.PGR, my.HER2, my.TILS, my.GR), dend, rowLabels = c("Subtype", "ER", "PgR", "Her2","TILs","Grade"))
 dev.off()
 
 
@@ -218,15 +238,14 @@ dev.off()
 
 
 
-# MAKE DESIGN MATRIX
+# Diagnosis with pool
 diag_design <- model.matrix(~0+diag+pool)
 DA_diag1 <- DA_all_contrasts(tifdata_small, diag_design, diag, "diag", 1, 0.05)
 
+# Diagnosis with pool and TIL status
 diag_design <- model.matrix(~0+diag+pool+TILs)
 DA_diag2 <- DA_all_contrasts(tifdata_small, diag_design, diag, "diag", 1, 0.05)
 
-#diag_design <- model.matrix(~0+diag+pool+TILs+Gr)
-#DA_diag3 <- DA_all_contrasts(tifdata_small, diag_design, diag, "diag", 1, 0.05)
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -236,16 +255,6 @@ DA_diag2 <- DA_all_contrasts(tifdata_small, diag_design, diag, "diag", 1, 0.05)
 #write_out(rbind(DA_diag$`diagHER2-diagLumA`[[1]],DA_diag$`diagHER2-diagLumA`[[2]]), "HER2_LumA_DA")
 #write_out(rbind(DA_diag$`diagHER2-diagTNBC`[[1]],DA_diag$`diagHER2-diagTNBC`[[2]]), "HER2_TNBC_DA")
 #write_out(rbind(DA_diag$`diagLumA-diagTNBC`[[1]], DA_diag$`diagLumA-diagTNBC`[[2]]), "LumA_TNBC_DA")
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# MAKEING FULL DIAG DA DATASET
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#sig_d <- unique(sort(c(rownames(DA_diag$`diagHER2-diagLumA`[[1]]), rownames(DA_diag$`diagHER2-diagLumA`[[2]]), rownames(DA_diag$`diagHER2-diagTNBC`[[1]]), rownames(DA_diag$`diagHER2-diagTNBC`[[2]]), rownames(DA_diag$`diagLumA-diagTNBC`[[1]]), rownames(DA_diag$`diagLumA-diagTNBC`[[2]]))))
-#sig_diag <- batch_corr_diag_TILs[rownames(batch_corr_diag_TILs) %in% sig_d, ]
-#sig_diag <- tifdata_small[rownames(tifdata_small) %in% sig_d, ]
-#sig_diag_scaled<- scale(sig_diag, center = TRUE, scale = FALSE)
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -276,22 +285,21 @@ DA_diag2 <- DA_all_contrasts(tifdata_small, diag_design, diag, "diag", 1, 0.05)
 # LIMMA DIFFERENTIAL ABUNDANCE ANALYSIS USING HORMONE RECEPTORS
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# Make Design Matrix
+# Estrogen
 ER_design <- model.matrix(~0+ER+pool)
 DA_ER <- DA_all_contrasts(tifdata_small, ER_design, ER, "ER", 1, 0.05)
 
-# Make Design Matrix
+# Progesterone
 PGR_design <- model.matrix(~0+PGR+pool)
 DA_PGR <- DA_all_contrasts(tifdata_small, PGR_design, PGR, "PGR", 1, 0.05)
 
-# Make Design Matrix
+# Androgen
 AR_design <- model.matrix(~0+AR+pool)
 DA_AR <- DA_all_contrasts(tifdata_small, AR_design, AR, "AR", 1, 0.05)
 
-# Make Design Matrix
-HER2_design <- model.matrix(~0+HER2+pool)
-DA_HER2 <- DA_all_contrasts(tifdata_small, HER2_design, HER2, "HER2", 1, 0.05)
-
+# HER2 enriched
+HER2_design <- model.matrix(~0+HER2Sim+pool)
+DA_HER2 <- DA_all_contrasts(tifdata_small, HER2_design, HER2Sim, "HER2Sim", 1, 0.05)
 
 
 
@@ -312,16 +320,44 @@ DA_HER2 <- DA_all_contrasts(tifdata_small, HER2_design, HER2, "HER2", 1, 0.05)
 #  Make Design Matix
 TILs_design <- model.matrix(~0+TILs+pool)
 DA_TILs <- DA_all_contrasts(tifdata_small, TILs_design, TILs, "TILs", 1, 0.05)
+DA_TILs_permissive <- DA_all_contrasts(tifdata_small, TILs_design, TILs, "TILs", 0.5, 0.05)
+
 
 #  Make Design Matix
 Gr_design <- model.matrix(~0+Gr+pool)
-DA_Gr <- DA_all_contrasts(tifdata_small, Gr_design, Gr, "Gr", 1, 0.05)
+DA_Grp <- DA_all_contrasts(tifdata_small, Gr_design, Gr, "Gr", 0.5, 0.11)
+
+Gr_design <- model.matrix(~0+Gr)
+DA_Gr <- DA_all_contrasts(tifdata_small, Gr_design, Gr, "Gr", 0.8, 0.05)
+
+GR_int <- c(intersect(rownames(DA_Gr$`Grhigh-Grlow`[[1]]), rownames(DA_Grp$`Grhigh-Grlow`[[1]])), intersect(rownames(DA_Gr$`Grhigh-Grlow`[[2]]), rownames(DA_Grp$`Grhigh-Grlow`[[2]])))
+
+DA_Gr <- rbind(DA_Gr$`Grhigh-Grlow`[[1]][rownames(DA_Gr$`Grhigh-Grlow`[[1]]) %in% GR_int, ], DA_Gr$`Grhigh-Grlow`[[2]][rownames(DA_Gr$`Grhigh-Grlow`[[2]]) %in% GR_int, ])
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# WRITING OUT TABLES OF DA PROTEINS
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#write_out(rbind(DA_TILs$`TILshigh-TILslow`[[1]],DA_TILs$`TILshigh-TILslow`[[2]]), "TILsHigh_Low_pool_DA")
+#write_out(rbind(DA_TILs_permissive$`TILshigh-TILslow`[[1]],DA_TILs_permissive$`TILshigh-TILslow`[[2]]), "TILsHigh_Low_permissive_pool_DA")
+
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# LIMMA DIFFERENTIAL ABUNDANCE ANALYSIS USING CLUSTERS
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Three Clusters
+C3_design <- model.matrix(~0+C3+pool)
+DA_C3 <- DA_all_contrasts(tifdata_small, C3_design, C3, "C3", 1, 0.05)
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # WRITING OUT TABLES OF DA PROTEINS
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#write_out(rbind(DA_TILs$`TILshigh-TILslow`[[1]],DA_TILs$`TILshigh-TILslow`[[2]]), "TILS_pool_DA")
+#write_out(rbind(DA_C3$`C3C2-C3C1`[[1]],DA_C3$`C3C2-C3C1`[[2]]), "C2_C1_pool_DA")
+#write_out(rbind(DA_C3$`C3C3-C3C1`[[1]],DA_C3$`C3C3-C3C1`[[2]]), "C3_C1_pool_DA")
+#write_out(rbind(DA_C3$`C3C3-C3C2`[[1]],DA_C3$`C3C3-C3C2`[[2]]), "C3_C2_pool_DA")
 
 
 
@@ -367,13 +403,20 @@ LumA_TNBC_ov <- plot_upsetR(intsec.list, "HER2LumA", "Overlap_LumA_TNBC", TRUE, 
 univ_tif <- rownames(tifdata_small)
 univ_tif <- unique(sort(univ_tif))
 
+H_L_GO <- TOPGO(ont = "BP", univ = univ_tif, intpro = unique(c(rownames(DA_diag1$`diagHER2-diagLumA`[[1]]), rownames(DA_diag1$`diagHER2-diagLumA`[[2]]))), GO_background = GO_background, 20)
 
-H_L_GO_up <- GO_visual(rownames(DA_diag$`diagHER2-diagLumA`[[1]]), univ_tif, GO_background, 30, "H_L_up", TRUE, TRUE)
-H_L_GO_down <- GO_visual(rownames(DA_diag$`diagHER2-diagLumA`[[2]]), univ_tif, GO_background, 30, "H_L_down", TRUE, TRUE)
-H_T_GO_up <- GO_visual(rownames(DA_diag$`diagHER2-diagTNBC`[[1]]), univ_tif, GO_background, 30, "H_T_up", TRUE, TRUE)
-H_T_GO_down <- GO_visual(rownames(DA_diag$`diagHER2-diagTNBC`[[2]]), univ_tif, GO_background, 30, "H_T_down", TRUE, TRUE)
-L_T_GO_up <- GO_visual(rownames(DA_diag$`diagLumA-diagTNBC`[[1]]), univ_tif, GO_background, 30, "L_T_up", TRUE, TRUE)
-L_T_GO_down <- GO_visual(rownames(DA_diag$`diagLumA-diagTNBC`[[2]]), univ_tif, GO_background, 30, "L_T_down", TRUE, TRUE)
+H_L_GO_up <- GO_visual(rownames(DA_diag1$`diagHER2-diagLumA`[[1]]), univ_tif, GO_background, 30, "H_L_up", TRUE, TRUE)
+H_L_GO_down <- GO_visual(rownames(DA_diag1$`diagHER2-diagLumA`[[2]]), univ_tif, GO_background, 30, "H_L_down", TRUE, TRUE)
+
+H_T_GO <- TOPGO(ont = "BP", univ = univ_tif, intpro = unique(c(rownames(DA_diag1$`diagHER2-diagTNBC`[[1]]), rownames(DA_diag1$`diagHER2-diagTNBC`[[2]]))), GO_background = GO_background, 20)
+
+H_T_GO_up <- GO_visual(rownames(DA_diag1$`diagHER2-diagTNBC`[[1]]), univ_tif, GO_background, 30, "H_T_up", TRUE, TRUE)
+H_T_GO_down <- GO_visual(rownames(DA_diag1$`diagHER2-diagTNBC`[[2]]), univ_tif, GO_background, 30, "H_T_down", TRUE, TRUE)
+
+L_T_GO <- TOPGO(ont = "BP", univ = univ_tif, intpro = unique(c(rownames(DA_diag1$`diagLumA-diagTNBC`[[1]]), rownames(DA_diag1$`diagLumA-diagTNBC`[[2]]))), GO_background = GO_background, 20)
+
+L_T_GO_up <- GO_visual(rownames(DA_diag1$`diagLumA-diagTNBC`[[1]]), univ_tif, GO_background, 30, "L_T_up", TRUE, TRUE)
+L_T_GO_down <- GO_visual(rownames(DA_diag1$`diagLumA-diagTNBC`[[2]]), univ_tif, GO_background, 30, "L_T_down", TRUE, TRUE)
 
 
 
@@ -398,237 +441,405 @@ get_stats(sig_d_genes, exo_tif_no_ov, exo_tif_ov)
 
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# PCA ANALYSIS USING DIAG
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-# ROTATIONS OF PROTEINS IN N-DIMENSIONAL SPACE
-#rot_diag <- rotation_func(batch_corr_diag_TILs)
-
-
-# BOXPLOT TO IDENTIFY MOST IMPORTANT PCs:
-#boxplots(batch_corr_diag_TILs, diag, colorcode_diag)
-
-
-# EXTRACTING THE ROTATION FROM MOST INTERESTING PCs
-#PCA_diag <- sort(c(as.character(rownames(head(rot_diag[order(rot_diag$PC1),], n=50))), as.character(rownames(tail(rot_diag[order(rot_diag$PC1),], n=50))), as.character(rownames(head(rot_diag[order(rot_diag$PC2),], n=50))), as.character(rownames(tail(rot_diag[order(rot_diag$PC2),], n=50))), as.character(rownames(head(rot_diag[order(rot_diag$PC4),], n=50))), as.character(rownames(tail(rot_diag[order(rot_diag$PC4),], n=50)))))
-#PCA_data_diag <- batch_corr_diag_TILs[rownames(batch_corr_diag_TILs) %in% PCA_diag, ]
-
-
-# OVERLAP PCA RESULTS WITH DA RESULTS 
-#venn <- venn.diagram(list(A=sig_d, B=PCA_diag), category.names = c("diag", "PCA_diag"), filename=NULL, lwd = 0.7, cat.pos=0, sub.cex = 2, cat.cex= 2, cex=1.5, fill=rainbow(2))
-#grid.draw(venn)
-
-
-# OVERLAP PCA RESULTS WITH DA RESULTS - GET GENE INFO
-#TH_up_DA_PCA <- hugo[hugo$Accession %in% intersect(as.character(T_H[[1]]$up), PCA_diag), ]
-#TH_down_DA_PCA <- hugo[hugo$Accession %in% intersect(as.character(T_H[[2]]$down), PCA_diag), ]
-
-#TL_up_DA_PCA <- hugo[hugo$Accession %in% intersect(as.character(T_L[[1]]$up), PCA_diag), ]
-#TL_down_DA_PCA <- hugo[hugo$Accession %in% intersect(as.character(T_L[2]$down), PCA_diag), ]
-
-#LH_up_DA_PCA <- hugo[hugo$Accession %in% intersect(as.character(L_H[[1]]$up), PCA_diag), ]
-#LH_down_DA_PCA <- hugo[hugo$Accession %in% intersect(as.character(L_H[[2]]$down), PCA_diag), ]
-
-
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# LASSO USING DIAGNOSIS
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-group_diag <- as.integer(diag)
-
-LASSO_BC1 <- Reduce(intersect, list(LASSO_protein(1, batch_corr_diag, group_diag, TRUE), LASSO_protein(40, batch_corr_diag, group_diag, TRUE), LASSO_protein(99, batch_corr_diag, group_diag, TRUE), LASSO_protein(640, batch_corr_diag, group_diag, TRUE), LASSO_protein(6565, batch_corr_diag, group_diag, TRUE)))
-LASSO_BC2 <- Reduce(intersect, list(LASSO_protein(1, batch_corr_diag_TILs, group_diag, TRUE), LASSO_protein(40, batch_corr_diag_TILs, group_diag, TRUE), LASSO_protein(99, batch_corr_diag_TILs, group_diag, TRUE), LASSO_protein(640, batch_corr_diag_TILs, group_diag, TRUE), LASSO_protein(6565, batch_corr_diag_TILs, group_diag, TRUE)))
-LASSO_NonBC <- Reduce(intersect, list(LASSO_protein(1, tifdata_small, group_diag, TRUE), LASSO_protein(40, tifdata_small, group_diag, TRUE), LASSO_protein(99, tifdata_small, group_diag, TRUE), LASSO_protein(640, tifdata_small, group_diag, TRUE), LASSO_protein(6565, tifdata_small, group_diag, TRUE)))
-LASSO_diag <- intersect(LASSO_BC1, LASSO_BC2)
-#write_out(LASSO_diag, "LASSO_subtypes_corrected_pool_TILs")
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# LASSO USING ER, PGR and TILS
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-# LASSO ER
-group_ER <- as.integer(ER)
-LASSO_BC <- Reduce(intersect, list(LASSO_protein(1, batch_corr_diag, group_ER, FALSE), LASSO_protein(40, batch_corr_diag, group_ER,  FALSE), LASSO_protein(99, batch_corr_diag, group_ER,   FALSE), LASSO_protein(640, batch_corr_diag, group_ER,  FALSE), LASSO_protein(6565, batch_corr_diag, group_ER,  FALSE)))
-LASSO_NonBC <- Reduce(intersect, list(LASSO_protein(1, tifdata_small, group_ER,  FALSE), LASSO_protein(40, tifdata_small, group_ER,  FALSE), LASSO_protein(99, tifdata_small, group_ER,  FALSE), LASSO_protein(640, tifdata_small, group_ER,  FALSE), LASSO_protein(6565, tifdata_small, group_ER,  FALSE)))
-LASSO_ER <- unique(sort(c(LASSO_BC, LASSO_NonBC)))
-#write_out(LASSO_ER, "LASSO_ER_corrected_pool")
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-# LASSO PGR
-group_PGR <- as.integer(PGR)
-LASSO_BC <- Reduce(intersect, list(LASSO_protein(1, batch_corr_diag, group_PGR, FALSE), LASSO_protein(40, batch_corr_diag, group_PGR, FALSE), LASSO_protein(99, batch_corr_diag, group_PGR, FALSE), LASSO_protein(640, batch_corr_diag, group_PGR,  FALSE), LASSO_protein(6565, batch_corr_diag, group_PGR,  FALSE)))
-LASSO_NonBC <- Reduce(intersect, list(LASSO_protein(1, tifdata_small, group_PGR, FALSE), LASSO_protein(40, tifdata_small, group_PGR, FALSE), LASSO_protein(99, tifdata_small, group_PGR, FALSE), LASSO_protein(640, tifdata_small, group_PGR,  FALSE), LASSO_protein(6565, tifdata_small, group_PGR, FALSE)))
-LASSO_PGR <- unique(sort(c(LASSO_BC, LASSO_NonBC)))
-#write_out(LASSO_PGR, "LASSO_PGR_corrected_pool")
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-# LASSO HER2
-HER2 <- as.factor(ifelse(HER2 %in% c("H2", "H3"), "H23", as.character(HER2)))
-group_HER2 <- as.integer(HER2)
-LASSO_BC <- Reduce(intersect, list(LASSO_protein(1, batch_corr_diag, group_HER2, TRUE), LASSO_protein(40, batch_corr_diag, group_HER2, TRUE), LASSO_protein(99, batch_corr_diag, group_HER2, TRUE), LASSO_protein(640, batch_corr_diag, group_HER2, TRUE), LASSO_protein(6565, batch_corr_diag, group_HER2, TRUE)))
-LASSO_NonBC <- Reduce(intersect, list(LASSO_protein(1, tifdata_small, group_HER2, TRUE), LASSO_protein(40, tifdata_small, group_HER2, TRUE), LASSO_protein(99, tifdata_small, group_HER2, TRUE), LASSO_protein(640, tifdata_small, group_HER2, TRUE), LASSO_protein(6565, tifdata_small, group_HER2, TRUE)))
-LASSO_HER2 <- unique(sort(c(LASSO_BC, LASSO_NonBC)))
-#write_out(LASSO_HER2, "LASSO_HER2_corrected_pool")
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-# LASSO TILS
-group_TILs <- as.integer(TILs)
-LASSO_BC <- Reduce(intersect, list(LASSO_protein(1, batch_corr_diag, group_TILs, TRUE), LASSO_protein(40, batch_corr_diag, group_TILs, TRUE), LASSO_protein(99, batch_corr_diag, group_TILs, TRUE), LASSO_protein(640, batch_corr_diag, group_TILs, TRUE), LASSO_protein(6565, batch_corr_diag, group_TILs, TRUE)))
-LASSO_NonBC <- Reduce(intersect, list(LASSO_protein(1, tifdata_small, group_TILs, TRUE), LASSO_protein(40, tifdata_small, group_TILs, TRUE), LASSO_protein(99, tifdata_small, group_TILs, TRUE), LASSO_protein(640, tifdata_small, group_TILs, TRUE), LASSO_protein(6565, tifdata_small, group_TILs, TRUE)))
-LASSO_TILs <- unique(sort(c(LASSO_BC, LASSO_NonBC)))
-#write_out(LASSO_TILs, "LASSO_TILs_corrected_pool")
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-# LASSO Grade
-#group_Gr <- as.integer(Gr)
-#LASSO_BC <- Reduce(intersect, list(LASSO_protein(1, batch_corr_diag, group_Gr, TRUE), LASSO_protein(40, batch_corr_diag, group_Gr, TRUE), LASSO_protein(99, batch_corr_diag, group_Gr, TRUE), LASSO_protein(640, batch_corr_diag, group_Gr, TRUE), LASSO_protein(6565, batch_corr_diag, group_Gr, TRUE)))
-#LASSO_NonBC <- Reduce(intersect, list(LASSO_protein(1, tifdata_small, group_Gr, TRUE), LASSO_protein(40, tifdata_small, group_Gr, TRUE), LASSO_protein(99, tifdata_small, group_Gr, TRUE), LASSO_protein(640, tifdata_small, group_Gr, TRUE), LASSO_protein(6565, tifdata_small, group_Gr, TRUE)))
-#LASSO_Gr <- unique(sort(c(LASSO_BC, LASSO_NonBC)))
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# RANDOM FOREST USING DIAGNOSIS
+# LASSO REGRESSION
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
-tifdata_small_RF <- t(tifdata_small)
-batch_corr_diag_TILs_RF <- t(batch_corr_diag_TILs)
-batch_corr_diag_RF <- t(batch_corr_diag)
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Subtype
 
-RF_BC <- Reduce(intersect, list(my_forest(1, batch_corr_diag_TILs_RF, diag), my_forest(40, batch_corr_diag_TILs_RF, diag), my_forest(99, batch_corr_diag_TILs_RF, diag), my_forest(640, batch_corr_diag_TILs_RF, diag), my_forest(6565, batch_corr_diag_TILs_RF, diag)))
-RF_BC_conver <- my_forest_conver(1, batch_corr_diag_TILs_RF, diag)
+LASSOdiag <- LASSO_Apply(tifdata_small, diag, FALSE, TRUE, NULL, NULL)
+LASSOdiag_B1 <- LASSO_Apply(tifdata_small, diag, FALSE, TRUE, pool, NULL)
+LASSOdiag_B2 <- LASSO_Apply(tifdata_small, diag, FALSE, TRUE, pool, TILs)
 
-### Converges for TNBC: 0.16 and LumA: 0.05, not for HER2 ###
-### "Q7Z3D4" "Q969E4" "Q9BU02" "Q9HB07" ###
+LASSOdiagAll <- list(LASSOdiag, LASSOdiag_B1, LASSOdiag_B2)
+names(LASSOdiagAll) <- c("LASSOdiag", "LASSOdiag_B1", "LASSOdiag_B2")
+save(LASSOdiagAll, file = "LASSOdiagAll.Rdata")
 
-RF_NonBC <- Reduce(intersect, list(my_forest(1, tifdata_small_RF, diag), my_forest(40, tifdata_small_RF, diag), my_forest(99, tifdata_small_RF, diag), my_forest(640, tifdata_small_RF, diag), my_forest(6565, tifdata_small_RF, diag)))
-RF_NonBC_conver <- my_forest_conver(1, tifdata_small_RF, diag)
 
-### Converges for TNBC: 0.25 and LumA: 0.05, not for HER2 ###
-### "Q9HB07", "E9PFK9" "Q9BU02" "Q9HB07" "Q9NYQ6" ###
+#LASSOdiag <- data.frame(Accession =  unique(c(LASSOdiag$Vars, LASSOdiag_B1$Vars, LASSOdiag_B2$Vars)))
+#LASSOdiag <- merge(LASSOdiag, uniprot_to_name(LASSOdiag$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(LASSOdiag, "LASSO_diag_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
-RF_diag <- unique(sort(c(RF_BC, RF_NonBC)))
-# RF_diag <- c("Q9HB07", "E9PFK9", "Q9BU02", "Q9NYQ6", "Q7Z3D4", "Q969E4")
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Subtype without Her2
+
+data_LumTN <- tifdata_small[,-c(2,5,28)]
+group_LumTN <- as.factor(as.character(diag[-c(2,5,28)]))
+pool_LumTN <- as.factor(as.character(pool[-c(2,5,28)]))
+TILs_LumTN <- as.factor(as.character(TILs[-c(2,5,28)]))
+
+LASSOLumTN <- LASSO_Apply(data_LumTN, group_LumTN, TRUE, FALSE, NULL, NULL)
+LASSOLumTN_B1 <- LASSO_Apply(data_LumTN, group_LumTN, TRUE, FALSE, pool_LumTN, NULL)
+LASSOLumTN_B2 <- LASSO_Apply(data_LumTN, group_LumTN, TRUE, FALSE, pool_LumTN, TILs_LumTN)
+
+LASSOLumTNAll <- list(LASSOLumTN, LASSOLumTN_B1, LASSOLumTN_B2)
+names(LASSOLumTNAll) <- c("LASSOLumTN", "LASSOLumTN_B1", "LASSOLumTN_B2")
+save(LASSOLumTNAll, file = "LASSOLumTNAll.Rdata")
+
+
+#LASSOLumTNAll <- data.frame(Accession = Reduce(intersect, list(LASSOLumTNAll$Vars, LASSOLumTNAll_B1$Vars, LASSOLumTNAll_B2$Vars)))
+#LASSOLumTNAll <- merge(LASSOLumTNAll, uniprot_to_name(LASSOLumTNAll$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(LASSOLumTNAll, "LASSO_LumTNAll_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Tumor Grade
+
+LASSOGR <- LASSO_Apply(tifdata_small, Gr, FALSE, FALSE, NULL, NULL)
+LASSOGR_B1 <- LASSO_Apply(tifdata_small, Gr, FALSE, FALSE, pool, NULL)
+LASSOGR_B2 <- LASSO_Apply(tifdata_small, Gr, FALSE, FALSE, pool, TILs)
+
+LASSOGRAll <- list(LASSOGR, LASSOGR_B1, LASSOGR_B2)
+names(LASSOGRAll) <- c("LASSOGR", "LASSOGR_B1", "LASSOGR_B2")
+save(LASSOGRAll, file = "LASSOGRAll.Rdata")
+
+
+#LASSOGR <- data.frame(Accession = Reduce(intersect, list(LASSOGR$Vars, LASSOGR_B1$Vars, LASSOGR_B2$Vars)))
+#LASSOGR <- merge(LASSOGR, uniprot_to_name(LASSOGR$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(LASSOGR, "LASSO_GR_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# TILs
+
+LASSOTILs <- LASSO_Apply(tifdata_small, TILs, FALSE, FALSE, NULL, NULL)
+LASSOTILs_B1 <- LASSO_Apply(tifdata_small, TILs, FALSE, FALSE, pool, NULL)
+
+LASSOTILsAll <- list(LASSOTILs, LASSOTILs_B1)
+names(LASSOTILsAll) <- c("LASSOTILs", "LASSOTILs_B1")
+save(LASSOTILsAll, file = "LASSOTILsAll.Rdata")
+
+
+#LASSOTILs <- data.frame(Accession = Reduce(intersect, list(LASSOTILs$Vars, LASSOTILs_B1$Vars)))
+#LASSOTILs <- merge(LASSOTILs, uniprot_to_name(LASSOTILs$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(LASSOTILs, "LASSO_TILs_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Her2 status
+
+LASSOHer2 <- LASSO_Apply(tifdata_small, HER2Sim, FALSE, FALSE, NULL, NULL)
+LASSOHer2_B1 <- LASSO_Apply(tifdata_small, HER2Sim, FALSE, FALSE, pool, NULL)
+LASSOHer2_B2 <- LASSO_Apply(tifdata_small, HER2Sim, FALSE, FALSE, pool, TILs)
+
+LASSOHer2All <- list(LASSOHer2, LASSOHer2_B1, LASSOHer2_B2)
+names(LASSOHer2All) <- c("LASSOHer2", "LASSOHer2_B1", "LASSOHer2_B2")
+save(LASSOHer2All, file = "LASSOHer2All.Rdata")
+
+
+#LASSOHer2 <- data.frame(Accession = Reduce(intersect, list(LASSOHer2$Vars, LASSOHer2_B1$Vars, LASSOHer2_B2$Vars)))
+#LASSOHer2 <- merge(LASSOHer2, uniprot_to_name(LASSOHer2$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(LASSOHer2, "LASSO_Her2_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Estrogen
+
+# Split TRUE
+LASSOERval <- LASSO_Apply(tifdata_small, ER, TRUE, FALSE, NULL, NULL)
+LASSOERval_B1  <- LASSO_Apply(tifdata_small, ER, TRUE, FALSE, pool, NULL)
+LASSOERval_B2  <- LASSO_Apply(tifdata_small, ER, TRUE, FALSE, pool, TILs)
+
+LASSOERAllval <- list(LASSOERval, LASSOERval_B1, LASSOERval_B2)
+names(LASSOERAllval) <- c("LASSOER", "LASSOER_B1", "LASSOER_B2")
+save(LASSOERAllval, file = "LASSOERAllval.Rdata")
+
+
+# Split FALSE
+LASSOER <- LASSO_Apply(tifdata_small, ER, FALSE, FALSE, NULL, NULL)
+LASSOER_B1  <- LASSO_Apply(tifdata_small, ER, FALSE, FALSE, pool, NULL)
+LASSOER_B2  <- LASSO_Apply(tifdata_small, ER, FALSE, FALSE, pool, TILs)
+
+LASSOERAll <- list(LASSOER, LASSOER_B1, LASSOER_B2)
+names(LASSOERAll) <- c("LASSOER", "LASSOER_B1", "LASSOER_B2")
+save(LASSOERAll, file = "LASSOERAll.Rdata")
+
+#LASSOER <- data.frame(Accession = Reduce(intersect, list(LASSOER$Vars, LASSOER_B1$Vars, LASSOER_B2$Vars)))
+#LASSOER <- merge(LASSOER, uniprot_to_name(LASSOER$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(LASSOER, "LASSO_ER_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Progesterone 
+
+# Split TRUE
+LASSOPgRval <- LASSO_Apply(tifdata_small, PGR, TRUE, FALSE, NULL, NULL)
+LASSOPgRval_B1  <- LASSO_Apply(tifdata_small, PGR, TRUE, FALSE, pool, NULL)
+LASSOPgRval_B2  <- LASSO_Apply(tifdata_small, PGR, TRUE, FALSE, pool, TILs)
+
+LASSOPgRAllval <- list(LASSOPgRval, LASSOPgRval_B1, LASSOPgRval_B2)
+names(LASSOPgRAllval) <- c("LASSOPgR", "LASSOPgR_B1", "LASSOPgR_B2")
+save(LASSOPgRAllval, file = "LASSOPgRAllval.Rdata")
+
+# Split FALSE
+LASSOPgR <- LASSO_Apply(tifdata_small, PGR, FALSE, FALSE, NULL, NULL)
+LASSOPgR_B1  <- LASSO_Apply(tifdata_small, PGR, FALSE, FALSE, pool, NULL)
+LASSOPgR_B2  <- LASSO_Apply(tifdata_small, PGR, FALSE, FALSE, pool, TILs)
+
+LASSOPgRAll <- list(LASSOPgR, LASSOPgR_B1, LASSOPgR_B2)
+names(LASSOPgRAll) <- c("LASSOPgR", "LASSOPgR_B1", "LASSOPgR_B2")
+save(LASSOPgRAll, file = "LASSOPgRAll.Rdata")
+
+
+#LASSOPgR <- data.frame(Accession = Reduce(intersect, list(LASSOPgR$Vars, LASSOPgR_B1$Vars, LASSOPgR_B2$Vars)))
+#LASSOPgR <- merge(LASSOPgR, uniprot_to_name(LASSOPgR$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(LASSOPgR, "LASSO_PgR_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+# Average Weights LASSO
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightSub1 <- AverageWeight(LASSOdiagAll)
+WeightSub2 <- AverageWeight(LASSOLumTNAll)
+WeightSub <- AverageWeight(list(WeightSub1[,-5], WeightSub2[,-5]))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightER1 <- AverageWeight(LASSOERAll)
+WeightER2 <- AverageWeight(LASSOERAllval)
+WeightER <- AverageWeight(list(WeightER1[,-5], WeightER2[,-5]))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightPgR1 <- AverageWeight(LASSOPgRAll)
+WeightPgR2 <- AverageWeight(LASSOPgRAllval)
+WeightPgR <- AverageWeight(list(WeightPgR1[,-5], WeightPgR2[,-5]))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightHer2 <- AverageWeight(LASSOHer2All)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WeightTILs <- AverageWeight(LASSOTILsAll)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WeightGR <- AverageWeight(LASSOGRAll)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# WRITING OUT TABLES OF DA PROTEINS
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#write_out(RF_diag, "RF_subtypes_corrected_pool_TILS")
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# RANDOM FOREST USING ER, PGR and TILs
+# RANDOM FOREST
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
+# Subtype
+RFdiag <- RF_Apply(tifdata_small, diag, FALSE, NULL, NULL)
+RFdiag_B1 <- RF_Apply(tifdata_small, diag, FALSE, pool, NULL)
+RFdiag_B2 <- RF_Apply(tifdata_small, diag, FALSE, pool, TILs)
 
-# ER
-RF_BC <- Reduce(intersect, list(my_forest(1, batch_corr_diag_RF, ER), my_forest(40, batch_corr_diag_RF, ER), my_forest(99, batch_corr_diag_RF, ER), my_forest(640, batch_corr_diag_RF, ER), my_forest(6565, batch_corr_diag_RF, ER)))
-RF_BC_conver <- my_forest_conver(1, batch_corr_diag_RF, ER)
-### Converges, ERm: 0.13 and ERp: 0.05 ###
-### "E9PFK9", "Q7Z3D4" "Q969E4" "Q9BU02", "Q9HB07" "Q9NU22" ###
+RFdiagAll <- list(RFdiag, RFdiag_B1, RFdiag_B2)
+names(RFdiagAll) <- c("RFdiag", "RFdiag_B1", "RFdiag_B2")
+save(RFdiagAll, file = "RFdiagAll.Rdata")
 
-RF_NonBC <- Reduce(intersect, list(my_forest(1, tifdata_small_RF, ER), my_forest(40, tifdata_small_RF, ER), my_forest(99, tifdata_small_RF, ER), my_forest(640,  tifdata_small_RF, ER), my_forest(6565,  tifdata_small_RF, ER)))
-RF_NonBC_conver <- my_forest_conver(1, tifdata_small_RF, ER)
-### Converges, ERm: 0.26 and ERp: 0.05 ###
-### "Q9NYQ6" "E9PFK9" "P50895" "J3KNL6" "O95049" "Q9BU02" "Q9HB07" ###
-
-RF_ER <- unique(sort(c(RF_BC, RF_NonBC)))
-# RF_ER <- c("E9PFK9", "Q7Z3D4", "Q969E4", "Q9BU02", "Q9HB07", "Q9NU22","Q9NYQ6", "P50895", "J3KNL6", "O95049")
+#RFdiag <- data.frame(Accession =  unique(c(RFdiag$Vars, RFdiag_B1$Vars, RFdiag_B2$Vars)))
+#RFdiag <- merge(RFdiag, uniprot_to_name(RFdiag$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(RFdiag, "RF_diag_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# WRITING OUT TABLES OF DA PROTEINS
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#write_out(RF_ER, "RF_ER_corrected_pool")
+# Subtype without Her2
 
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+data_LumTN <- tifdata_small[,-c(2,5,28)]
+group_LumTN <- as.factor(as.character(diag[-c(2,5,28)]))
+pool_LumTN <- as.factor(as.character(pool[-c(2,5,28)]))
+TILs_LumTN <- as.factor(as.character(TILs[-c(2,5,28)]))
 
+RFLumTN <- RF_Apply(data_LumTN, group_LumTN, TRUE, NULL, NULL)
+RFLumTN_B1 <- RF_Apply(data_LumTN, group_LumTN, TRUE, pool_LumTN, NULL)
+RFLumTN_B2 <- RF_Apply(data_LumTN, group_LumTN, TRUE, pool_LumTN, TILs_LumTN)
 
-# PGR
+RFLumTNAll <- list(RFLumTN, RFLumTN_B1, RFLumTN_B2)
+names(RFLumTNAll) <- c("RFLumTN", "RFLumTN_B1", "RFLumTN_B2")
+save(RFLumTNAll, file = "RFLumTNAll.Rdata")
 
-RF_BC <- Reduce(intersect, list(my_forest(1, batch_corr_diag_RF, PGR), my_forest(40, batch_corr_diag_RF, PGR), my_forest(99, batch_corr_diag_RF, PGR), my_forest(640, batch_corr_diag_RF, PGR), my_forest(6565, batch_corr_diag_RF, PGR)))
-RF_BC_conver <- my_forest_conver(1, batch_corr_diag_RF, PGR)
-###  Borderline converges, PGRm: 0.16 and PGRp: 0.33 ###
-###  "B7ZLZ0" "E7EV62" "P50895", "E9PGQ4", "Q6UXD5" "Q96MY1" ###
-
-RF_NonBC <- Reduce(intersect, list(my_forest(1, tifdata_small_RF, PGR), my_forest(40, tifdata_small_RF, PGR), my_forest(99, tifdata_small_RF, PGR), my_forest(640,  tifdata_small_RF, PGR), my_forest(6565,  tifdata_small_RF, PGR)))
-RF_NonBC_conver <- my_forest_conver(1, tifdata_small_RF, PGR)
-###  Borderline converges, PGRm: 0.21 and PGRp: 0.33 ###
-###  "E9PGQ4", "P50895" , "E9PFK9" "E9PFN5" "Q9BU02" "Q9P206" ###
-
-
-RF_PGR <- unique(sort(c(RF_BC, RF_NonBC)))
-### RF_PGR <- c("B7ZLZ0", "E7EV62", "P50895", "E9PGQ4", "Q6UXD5", "Q96MY1", "E9PFK9", "E9PFN5", "Q9BU02", "Q9P206") ###
-### write_out(RF_PGR, "RF_PGR_corrected_pool") ###
-
-
-# HER2
-
-#RF_BC <- Reduce(intersect, list(my_forest(1, batch_corr_diag_RF, HER2), my_forest(40, batch_corr_diag_RF, HER2), my_forest(99, batch_corr_diag_RF, HER2), my_forest(640, batch_corr_diag_RF, HER2), my_forest(6565, batch_corr_diag_RF, HER2)))
-#RF_BC_conver <- my_forest_conver(1, batch_corr_diag_RF, HER2)
-
-###  Borderline converges, TILshigh: 0.14 and TILslow: 0.31 ###
-###  "B9A018" "O43505" "Q9NTJ3" "O43570" "P35052" "Q96IZ0" "Q96NL8" "Q9UJA5" ###
-
-#RF_NonBC <- Reduce(intersect, list(my_forest(1, tifdata_small_RF, HER2), my_forest(40, tifdata_small_RF, HER2), my_forest(99, tifdata_small_RF, HER2), my_forest(640,  tifdata_small_RF, HER2), my_forest(6565,  tifdata_small_RF, HER2)))
-#RF_NonBC_conver <- my_forest_conver(1, tifdata_small_RF, HER2)
-
-### NOT converged, TILshigh: 0.19 and TILslow: 0.46 ###
-###  "E7EVV3" "G3XAP6" "P35052", "B9A018", "O95466", "P16885" ###
-
-
-#RF_TILs <- unique(sort(c(RF_BC, RF_NonBC)))
-#RF_TILs <- c("B9A018", "O43505", "Q9NTJ3", "O43570", "P35052", "Q96IZ0", "Q96NL8", "Q9UJA5", "E7EVV3", "G3XAP6", "O95466", "P16885")
+#RFLumTN <- data.frame(Accession = Reduce(intersect, list(RFLumTN$Vars, RFLumTN_B1$Vars, RFLumTN_B2$Vars)))
+#RFLumTN <- merge(RFLumTN, uniprot_to_name(RFLumTN$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(RFLumTN, "RF_LumTN_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# WRITING OUT TABLES OF DA PROTEINS
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Tumor Grade
 
-#write_out(RF_TILs, "RF_TILs_corrected_pool")
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+RFGR <- RF_Apply(tifdata_small, Gr, FALSE, NULL, NULL)
+RFGR_B1 <- RF_Apply(tifdata_small, Gr, FALSE, pool, NULL)
+RFGR_B2 <- RF_Apply(tifdata_small, Gr, FALSE, pool, TILs)
 
-
-
-# TILS
-RF_BC <- Reduce(intersect, list(my_forest(1, batch_corr_diag_RF, TILs), my_forest(40, batch_corr_diag_RF, TILs), my_forest(99, batch_corr_diag_RF, TILs), my_forest(640, batch_corr_diag_RF, TILs), my_forest(6565, batch_corr_diag_RF, TILs)))
-RF_BC_conver <- my_forest_conver(1, batch_corr_diag_RF, TILs)
-
-### Borderline converges, TILshigh: 0.14 and TILslow: 0.31 ###
-### "B9A018" "O43505" "Q9NTJ3" "O43570" "P35052" "Q96IZ0" "Q96NL8" "Q9UJA5" ###
-
-RF_NonBC <- Reduce(intersect, list(my_forest(1, tifdata_small_RF, TILs), my_forest(40, tifdata_small_RF, TILs), my_forest(99, tifdata_small_RF, TILs), my_forest(640,  tifdata_small_RF, TILs), my_forest(6565,  tifdata_small_RF, TILs)))
-RF_NonBC_conver <- my_forest_conver(1, tifdata_small_RF, TILs)
-
-### NOT converged, TILshigh: 0.19 and TILslow: 0.46 ###
-### "E7EVV3" "G3XAP6" "P35052", "B9A018", "O95466", "P16885" ###
+RFGRAll <- list(RFGR, RFGR_B1, RFGR_B2)
+names(RFGRAll) <- c("RFGR", "RFGR_B1", "RFGR_B2")
+save(RFGRAll, file = "RFGRAll.Rdata")
 
 
-RF_TILs <- unique(sort(c(RF_BC, RF_NonBC)))
-#RF_TILs <- c("B9A018", "O43505", "Q9NTJ3", "O43570", "P35052", "Q96IZ0", "Q96NL8", "Q9UJA5", "E7EVV3", "G3XAP6", "O95466", "P16885") 
+#RFGR <- data.frame(Accession = Reduce(intersect, list(RFGR$Vars, RFGR_B1$Vars, RFGR_B2$Vars)))
+#RFGR <- merge(RFGR, uniprot_to_name(RFGR$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(RFGR, "RF_GR_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# WRITING OUT TABLES OF DA PROTEINS
+# Tumor infiltrating-lymphocytes
+
+RFTILs <- RF_Apply(tifdata_small, TILs, FALSE, NULL, NULL)
+RFTILs_B1 <- RF_Apply(tifdata_small, TILs, FALSE, pool, NULL)
+
+RFTILsAll <- list(RFTILs, RFTILs_B1)
+names(RFTILsAll) <- c("RFTILs", "RFTILs_B1")
+save(RFTILsAll, file = "RFTILsAll.Rdata")
+
+#RFTILs <- data.frame(Accession = Reduce(intersect, list(RFTILs$Vars, RFTILs_B1$Vars)))
+#RFTILs <- merge(RFTILs, uniprot_to_name(RFTILs$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(RFTILs, "RF_TILs_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Her2 status
+
+RFHer2 <- RF_Apply(tifdata_small, HER2Sim, FALSE, NULL, NULL)
+RFHer2_B1 <- RF_Apply(tifdata_small, HER2Sim, FALSE, pool, NULL)
+RFHer2_B2 <- RF_Apply(tifdata_small, HER2Sim, FALSE, pool, TILs)
+
+RFHer2All <- list(RFHer2, RFHer2_B1, RFHer2_B2)
+names(RFHer2All) <- c("RFHer2", "RFHer2_B1", "RFHer2_B2")
+save(RFHer2All, file = "RFHer2All.Rdata")
+
+
+#RFHer2 <- data.frame(Accession = Reduce(intersect, list(RFHer2$Vars, RFHer2_B1$Vars, RFHer2_B2$Vars)))
+#RFHer2 <- merge(RFHer2, uniprot_to_name(RFHer2$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(RFHer2, "RF_Her2_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Estrogen
+
+# Split TRUE
+RFER <- RF_Apply(tifdata_small, ER, TRUE, NULL, NULL)
+RFER_B1  <- RF_Apply(tifdata_small, ER, TRUE, pool, NULL)
+RFER_B2  <- RF_Apply(tifdata_small, ER, TRUE, pool, TILs)
+
+RFERAllval <- list(RFER, RFER_B1, RFER_B2)
+names(RFERAllval) <- c("RFER", "RFER_B1", "RFER_B2")
+save(RFERAllval, file = "RFERAllval.Rdata")
+
+# Split FALSE
+RFER <- RF_Apply(tifdata_small, ER, FALSE, NULL, NULL)
+RFER_B1  <- RF_Apply(tifdata_small, ER, FALSE, pool, NULL)
+RFER_B2  <- RF_Apply(tifdata_small, ER, FALSE, pool, TILs)
+
+RFERAll <- list(RFER, RFER_B1, RFER_B2)
+names(RFERAll) <- c("RFER", "RFER_B1", "RFER_B2")
+save(RFERAll, file = "RFERAll.Rdata")
+
+#RFER <- data.frame(Accession = Reduce(intersect, list(RFER$Vars, RFER_B1$Vars, RFER_B2$Vars)))
+#RFER <- merge(RFER, uniprot_to_name(RFER$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(RFER, "RF_ER_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Progesterone
+
+# Split TRUE
+RFPgR <- RF_Apply(tifdata_small, PGR, TRUE, NULL, NULL)
+RFPgR_B1  <- RF_Apply(tifdata_small, PGR, TRUE, pool, NULL)
+RFPgR_B2  <- RF_Apply(tifdata_small, PGR, TRUE, pool, TILs)
+
+RFPgRAllval <- list(RFPgR, RFPgR_B1, RFPgR_B2)
+names(RFPgRAllval) <- c("RFPgR", "RFPgR_B1", "RFPgR_B2")
+save(RFPgRAllval, file = "RFPgRAllval.Rdata")
+
+# Split FALSE
+RFPgR <- RF_Apply(tifdata_small, PGR, FALSE, NULL, NULL)
+RFPgR_B1  <- RF_Apply(tifdata_small, PGR, FALSE, pool, NULL)
+RFPgR_B2  <- RF_Apply(tifdata_small, PGR, FALSE, pool, TILs)
+
+RFPgRAll <- list(RFPgR, RFPgR_B1, RFPgR_B2)
+names(RFPgRAll) <- c("RFPgR", "RFPgR_B1", "RFPgR_B2")
+save(RFPgRAll, file = "RFPgRAll.Rdata")
+
+
+#RFPgR <- data.frame(Accession = Reduce(intersect, list(RFPgR$Vars, RFPgR_B1$Vars, RFPgR_B2$Vars)))
+#RFPgR <- merge(RFPgR, uniprot_to_name(RFPgR$Accession), by = "Accession", all.x = TRUE, all.y = FALSE)
+#write.table(RFPgR, "RF_PgR_corrected.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#write_out(RF_TILs, "RF_TILs_corrected_pool")
+
+
+# Average Weights
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightSub1 <- AverageWeight(RFdiagAll)
+WeightSub2 <- AverageWeight(RFLumTNAll)
+WeightSub <- AverageWeight(list(WeightSub1[,-5], WeightSub2[,-5]))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WeightER1 <- AverageWeight(RFERAll)
+WeightER2 <- AverageWeight(RFERAllval)
+WeightER <- AverageWeight(list(WeightER1[,-5], WeightER2[,-5]))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+WeightPgR1 <- AverageWeight(RFPgRAll)
+WeightPgR2 <- AverageWeight(RFPgRAllval)
+WeightPgR <- AverageWeight(list(WeightPgR1[,-5], WeightPgR2[,-5]))
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightHer2 <- AverageWeight(RFHer2All)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightTILs <- AverageWeight(RFTILsAll)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+WeightGR <- AverageWeight(RFGRAll)
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# OVerlap DA proteins
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+setwd(paste0(my.wd, "/Results/Tables/DA/Subtypes/Corrected_for_Pool_permissive"))
+
+HER2_TNBC_DA <- read.delim("HER2_TNBC_DA_corrected_pool.txt", header = TRUE)
+HER2_LumA_DA <- read.delim("HER2_LumA_DA_corrected_pool.txt", header = TRUE)
+LumA_TNBC_DA <- read.delim("LumA_TNBC_DA_corrected_pool.txt", header = TRUE)
+
+intsec.list <- list(unique(as.character(HER2_TNBC_DA[HER2_TNBC_DA$dir == "up",]$Accession)),
+                    unique(as.character(HER2_LumA_DA[HER2_LumA_DA$dir == "up",]$Accession)), 
+                    unique(as.character(LumA_TNBC_DA[LumA_TNBC_DA$dir == "up",]$Accession)), 
+                    unique(as.character(HER2_LumA_DA[HER2_LumA_DA$dir == "down",]$Accession)),
+                    unique(as.character(HER2_TNBC_DA[HER2_TNBC_DA$dir == "down",]$Accession)),
+                    unique(as.character(LumA_TNBC_DA[LumA_TNBC_DA$dir == "down",]$Accession)))
+
+names(intsec.list) <- c("Up in Her2 vs TNBC", "Up in Her2 vs Lum", "Up in Lum vs TNBC", "Up in Lum vs Her2", "Up in TNBC vs Her2", "Up in TNBC vs Lum")
+
+
+coloST <- c("#FAA275", "#FAA275", "#FFFD82", "#FFFD82", "#BF5454", "#BF5454")
+DAplot <- plot_upsetR(intsec.list, names(intsec.list), "Figure4", coloST, TRUE, FALSE)
+
+
+
 
 
 
@@ -643,16 +854,17 @@ LumA_TNBC_DA <- read.table("LumA_TNBC_DA_corrected_pool.txt", header = TRUE)
 
 
 setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/LASSO")
-Subtypes_LASSO <- read.table("LASSO_subtypes_corrected_pool_TILs.txt", header=TRUE)
+Subtypes_LASSO <- read.table("LASSO_subtypes_corrected.txt", header=TRUE)
 
 
 setwd("~/Desktop/Thilde/MS_MS_TIF_analysis_2014_2015/TIF_proteomics/Results/Tables/RF")
-Subtypes_RF <- read.table("RF_subtypes_corrected_pool_TILS.txt", header=TRUE)
+Subtypes_RF <- read.table("RF_subtypes_corrected.txt", header=TRUE)
 
 
 my.white <- c("white", "white", "white")
 my.DLRcol <- c("#08605F", "#BFBDC1",  "#545E75")
 
+my.DLRcol <-c("#6279B8", "#CDE7B0", "#34435E")
 
 intsec.list <- list(as.character(HER2_LumA_DA$Accession), as.character(Subtypes_LASSO$Accession), as.character(Subtypes_RF$Accession))
 names(intsec.list) <- c("DA", "LASSO", "RF")
@@ -681,13 +893,6 @@ dev.off()
 
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# PATHWAY ANALYSIS
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-univ_tif_enz <- u2e.map[u2e.map$uniprot %in% rownames(tifdata_small), ]
-
-
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -696,14 +901,18 @@ univ_tif_enz <- u2e.map[u2e.map$uniprot %in% rownames(tifdata_small), ]
 
 
 
-H_L_up_pw <- enrich_pathway(univ_tif_enz, u2e.map, as.character(rownames(DA_diag$`diagHER2-diagLumA`[[1]])), "H_L_up_pw", TRUE)
-H_L_down_pw <- enrich_pathway(univ_tif_enz, u2e.map, character(rownames(DA_diag$`diagHER2-diagLumA`[[2]])), "H_L_down_pw", TRUE)
+ensembl <- useMart('ensembl', dataset = "hsapiens_gene_ensembl")
+univ_tif_enz <- unique(sort(as.character(getBM(attributes=c("uniprotswissprot", "entrezgene_id"), filters="uniprotswissprot", values=tif_full_id, mart=ensembl)$entrezgene_id)))
 
-H_T_up_pw <- enrich_pathway(univ_tif_enz, u2e.map, as.character(rownames(DA_diag$`diagHER2-diagTNBC`[[1]])), "H_T_up_pw", TRUE)
-H_T_down_pw <- enrich_pathway(univ_tif_enz, u2e.map, as.character(rownames(DA_diag$`diagHER2-diagTNBC`[[2]])), "H_T_down_pw", TRUE)
 
-L_T_up_pw <- enrich_pathway(univ_tif_enz, u2e.map, as.character(rownames(DA_diag$`diagLumA-diagTNBC`[[1]])), "L_H_up_pw", TRUE)
-L_T_down_pw <- enrich_pathway(univ_tif_enz, u2e.map, as.character(rownames(DA_diag$`diagLumA-diagTNBC`[[2]])), "L_H_down_pw", TRUE)
+H_L_up_pw <- enrich_pathway(univ_tif_enz, as.character(rownames(DA_diag$`diagHER2-diagLumA`[[1]])), "H_L_up_pw", TRUE)
+H_L_down_pw <- enrich_pathway(univ_tif_enz, as.character(rownames(DA_diag$`diagHER2-diagLumA`[[2]])), "H_L_down_pw", TRUE)
+
+H_T_up_pw <- enrich_pathway(univ_tif_enz, as.character(rownames(DA_diag$`diagHER2-diagTNBC`[[1]])), "H_T_up_pw", TRUE)
+H_T_down_pw <- enrich_pathway(univ_tif_enz, as.character(rownames(DA_diag$`diagHER2-diagTNBC`[[2]])), "H_T_down_pw", TRUE)
+
+L_T_up_pw <- enrich_pathway(univ_tif_enz, as.character(rownames(DA_diag$`diagLumA-diagTNBC`[[1]])), "L_H_up_pw", TRUE)
+L_T_down_pw <- enrich_pathway(univ_tif_enz, as.character(rownames(DA_diag$`diagLumA-diagTNBC`[[2]])), "L_H_down_pw", TRUE)
 
 
 
@@ -713,21 +922,16 @@ my.pathway <- enrichPathway(as.character(entrez.data$entrez), organism = "human"
 
 
 
-
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # DE PROTEINS OVERLAP WITH DE CYTOKINES
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-cytokines <- c("PDGF", "IL1RA", "IL7", "VEGF", "FGF", "IL10", "IL13", "P10", "IL12", "IL1B", "RANTES")
-cytokines_accession <- hugo[grep("PDGF|IL1RA|IL7|VEGF|FGF|IL10|IL13|P10|IL12|IL1B|RANTES", hugo$name), ]
-cytokines_accession <- sort(as.character(cytokines_accession$Accession))
-
-
-cytokines_accession2 <- c("P01127", "P04085", "P09619", "P16234", "Q9NRA1",  "Q9GZP0", "P18510", "P13232", "P15692", "P49765", "P35968", "P49767", "Q9NRA1", "O43915", "P17948", "O15520", "P09038", "P55075", "P05230", "Q9GZV9", "P21781", "P31371", "Q92913", "P01584", "O95750", "O76093", "P12034", "P08620", "P22301", "Q6FGW4", 	"P35225", "P29460", "P13501")
+cytokines <- read.delim("Cytokines.txt", header=TRUE)
+cytokines_accession <- sort(as.character(cytokines$UniprotID))
 
 
 
-ov_d_cyto <- sig_d[sig_d %in% cytokines_accession2]
+ov_d_cyto <- sig_d[sig_d %in% cytokines_accession]
 #ov_pca_d_cyto <- PCA_diag[PCA_diag %in% cytokines_accession2]
 
 
@@ -814,5 +1018,141 @@ T_L_nwk <- get_nodes(diag_map, T_L_nwk, "TL")
 T_H_nwk <- get_nodes(diag_map, T_H_nwk, "TH")
 L_H_nwk <- get_nodes(diag_map, L_H_nwk, "LH")
 
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# IHC and MS plots
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+setwd(paste0(my.wd, "Results/Tables/Tables_for_publication/Working_Progress/IHC/"))
+
+# Load Immunohistochemistry data
+IHC <- read.delim("IHCscoresFull.txt", header = TRUE)
+proteins <- rownames(IHC)
+IHC$protein <- proteins
+IHC <- melt(IHC)
+IHC$protein <- factor(IHC$protein, levels=proteins)
+
+  
+# Heatmap
+ggplot(IHC, aes(protein, variable, fill = value)) + geom_tile() + scale_fill_viridis(begin =0, end =1, option = "viridis", direction = -1) + theme_bw() + coord_equal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Load Currated and transformed Mass-spec data
+MS <- read.delim("MSscoresFull.txt", header = TRUE)
+MS$protein <- proteins
+MS <- melt(MS)
+MS$protein <- factor(MS$protein, levels=proteins)
+
+# Heatmap
+ggplot(MS, aes(protein, variable, fill = value)) + geom_tile() + scale_fill_viridis(begin =0, end =1, option = "viridis", direction = -1) + theme_bw() + coord_equal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# -----------------------------------------------------------------------------
+# Trend Plots for proteins
+
+MSIHC <- cbind(MS, IHC[,3])
+colnames(MSIHC) <- c("protein", "STP", "MS", "IHC")
+MSIHC$STP <- as.factor(as.character(gsub(pattern = ".[^.]*$", "", MSIHC$STP)))
+MSIHC <- MSIHC[-which(is.na(MSIHC$IHC)),]
+MSIHC$IHC <- as.factor(as.character(MSIHC$IHC))
+
+
+# Plot (Box + scatter + trend)
+ggplot(MSIHC, aes(x=IHC, y=MS)) + geom_boxplot(alpha = 0.7) + 
+  geom_point(aes(color=STP)) + 
+  geom_smooth(aes(group = STP, color=STP), method = "lm", se=FALSE, size =0.8) + 
+  scale_color_manual(values = c("#FAA275","#DDDC71", "#BF5454")) +
+  theme_light() +
+  theme(axis.text.x = element_text(color = "grey40", size = 10, face = "plain"),
+        axis.text.y = element_text(color = "grey40", size = 10, face = "plain"),
+        axis.title.x = element_text(color = "grey40", size = 11, face = "plain"),
+        axis.title.y = element_text(color = "grey40", size = 11, face = "plain"),
+        legend.title=element_text(size=12), legend.text=element_text(size=11), strip.background = element_rect(fill = "white", linetype = "solid", color="black"), strip.text.x = element_text(color = "black")) +
+  facet_wrap(~ protein, ncol = 5) + theme(strip.text.x = element_text(size = 11, face = "bold"))
+
+# -----------------------------------------------------------------------------
+
+my.cols <- c("#FCB97D", "#FBB7C0", "#87BCDE", "#70A9A1", "#2B3A67", "#3A5743", "#DB4552")
+
+MSIHC$IHC <- as.numeric(as.character(MSIHC$IHC))
+MSIHC$IHC <- ifelse(MSIHC$IHC == 0.5, 0.0, MSIHC$IHC)
+MSIHC$IHC <- ifelse(MSIHC$IHC == 1.5, 1.0, MSIHC$IHC)
+MSIHC$IHC <- ifelse(MSIHC$IHC == 2.5, 2.0, MSIHC$IHC)
+MSIHC$IHC <- as.factor(MSIHC$IHC)
+
+my.cols <- c("#FCB97D", "#FBB7C0", "#87BCDE", "#70A9A1", "#2B3A67", "#3A5743", "#DB4552")
+my.cols <- c("#FCB97D","#70A9A1","#87BCDE", "#2B3A67")
+
+# Logistisk Regression Plots
+s.MSIHC <- split(MSIHC, f = MSIHC$protein)
+
+polr.MSIHC <- lapply(s.MSIHC, function(x) polr(IHC ~ MS, data = x, Hess=TRUE))
+#confint.MSIHC <- lapply(polr.MSIHC, function(x) confint(x))
+test.MSIHC <- lapply(polr.MSIHC, function(x) OLR_pval(x))
+new.MSIHC <- lapply(s.MSIHC, function(x) data.frame(MS = rep(seq(from = min(x$MS), to = max(x$MS), length.out = 100), 4)))
+
+n.MSIHC <- names(polr.MSIHC)
+prob.MSIHC <- list()
+
+for (idx in 1:length(polr.MSIHC)) {
+  m.prob <- cbind(new.MSIHC[[idx]], predict(polr.MSIHC[[idx]], new.MSIHC[[idx]], type = "probs"))
+  m.prob$Protein <- rep(n.MSIHC[[idx]], nrow(m.prob))
+  prob.MSIHC[[idx]] <- m.prob
+}
+
+names(prob.MSIHC) <- n.MSIHC
+
+
+lp.MSIHC <- lapply(prob.MSIHC, function(x) melt(x, id.vars = c("MS", "Protein"), variable.name = "Level", value.name="Probability"))
+plot.MSIHC <- do.call(rbind, lp.MSIHC)
+
+remove <- sort(c(which(plot.MSIHC$Protein == "TMEM51" & plot.MSIHC$MS < -1.3), which(plot.MSIHC$Protein == "MIEN1" & plot.MSIHC$MS > 2), which(plot.MSIHC$Protein == "PIP4K2B" & plot.MSIHC$MS > 1.3)))
+plot.MSIHC <- plot.MSIHC[-remove,]
+
+plot.MSIHC$Protein<- as.factor(plot.MSIHC$Protein)
+plot.MSIHC$variable <- as.factor(as.character(plot.MSIHC$variable))
+
+
+ggplot(plot.MSIHC, aes(x = MS, y = value, colour = variable)) + 
+  geom_line(size = 1) + theme_light() + scale_colour_manual(values = my.cols) +
+  theme(panel.grid.major = element_blank(), axis.text.x = element_text(size = 10, face = "plain"),
+        axis.text.y = element_text(size = 10, face = "plain"),
+        axis.title.x = element_text(size = 11, face = "plain"),
+        axis.title.y = element_text(size = 11, face = "plain"),
+        legend.title=element_text(size=12), legend.text=element_text(size=11),
+        strip.background = element_rect(fill = "white", linetype = "solid", color="black"),
+        strip.text.x = element_text(color = "black")) +
+  facet_wrap(~Protein, scales = "free", ncol = 5) + 
+  theme(strip.text.x = element_text(size = 11, face = "bold"))
+
+
+
+# -----------------------------------------------------------------------------
+
+
+
+# Regression by Breast Cancer Subtype
+s.MSIHC <- split(MSIHC, f = MSIHC$STP)
+
+# Linear Regression LumA
+LumA <- s.MSIHC$LumA
+s.LumA <- split(LumA, f = LumA$protein)
+l.LumA <- unlist(lapply(s.LumA, function(x) summary(lm(IHC ~ MS, data = x))$coefficients[2,4]))
+
+# Linear Regression TNBC
+TNBC <- s.MSIHC$TNBC
+s.TNBC <- split(TNBC, f = TNBC$protein)
+l.TNBC <- unlist(lapply(s.TNBC, function(x) summary(lm(IHC ~ MS, data = x))$coefficients[2,4]))
+
+# Logistic Regression LumA
+s.LumA$NAT1 <- NULL
+polr.LumA <- lapply(s.LumA, function(x) polr(IHC ~ MS, data = x, Hess=TRUE))
+test.LumA <- lapply(polr.LumA, function(x) OLR_pval(x))
+
+# Logistic Regression TNBC
+s.TNBC$TMEM51 <- NULL
+polr.TNBC <- lapply(s.TNBC, function(x) polr(IHC ~ MS, data = x, Hess=TRUE))
+test.TNBC <- lapply(polr.TNBC, function(x) OLR_pval(x))
+
+df.pval <- data.frame("All" = p.adjust(l.MSIHC, "BH"), "LumA" = p.adjust(l.LumA, "BH"), "TNBC" = p.adjust(l.TNBC, "BH"))
 
 
