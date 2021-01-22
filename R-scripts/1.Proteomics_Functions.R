@@ -27,8 +27,6 @@ library(gplots)
 library(glmnet)
 library(fitdistrplus)
 library(caTools)
-#library(rgl)
-#library(plot3D)
 library(randomForest)
 library(glmnet)
 library(e1071)
@@ -190,25 +188,17 @@ GO_map_to <- function(humanGO, my.GOs, my.proteins.vector, my.gene.vector) {
 # Takes as arguments;
     # my.data = abundance/expression data
     # my.group = patient groups,
-    # my.pool = vector with batches pool(e.g batch)
-    # my.tp = tumor percentage of sample
-    # my.tils = TILs (level of infiltrating lymphocytes in sample).
+    # my.batch = technical batches
 
-combat_corrections <- function(my.data, my.group, b1=NULL, b2=NULL){
-  mod_design <- model.matrix(~as.factor(my.group))
-  if(is.null(b1) & is.null(b2)) {
-    batch_corr <- my.data
-  } else if (!is.null(b1) & is.null(b2)) {
-    batch_corr <- ComBat(as.matrix(my.data), as.factor(b1), mod_design, par.prior=TRUE,prior.plots=FALSE)
-  } else if (is.null(b1) & !is.null(b2)) {
-    batch_corr <- ComBat(as.matrix(my.data), as.factor(b2), mod_design, par.prior=TRUE,prior.plots=FALSE)
+
+combat_corrections <- function(my.data, my.batch, my.group=NULL){
+  if(!is.null(my.group)) {
+    mod_design <- model.matrix(~as.factor(my.group))
+    batch_corr <- ComBat(dat = as.matrix(my.data), batch = as.factor(my.batch), mod = mod_design, par.prior=TRUE,prior.plots=FALSE)
   } else {
-    batch_corr <- ComBat(as.matrix(my.data), as.factor(b1), mod_design, par.prior=TRUE,prior.plots=FALSE)
-    batch_corr <- ComBat(batch_corr, as.factor(b2), mod_design, par.prior=TRUE,prior.plots=FALSE)
+    batch_corr <- ComBat(dat = as.matrix(my.data), batch = as.factor(my.batch), par.prior=TRUE,prior.plots=FALSE)
   }
-  return(batch_corr)
 }
-
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
