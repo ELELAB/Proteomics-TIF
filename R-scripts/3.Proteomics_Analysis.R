@@ -31,16 +31,15 @@ tif_full_name <- unique(tif_full$name)
 # OVERLAP TIF PROTEINS WITH PLASMA, EXOSOMES, SECRETED AND INDEPENDENT TIF SET
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# Uniprot
+#intsec.list <- list(SecretedBoerU, tif_full_id, ExosomesAllU, PlasmaU, PlasmaMPU, TIFYatesU)
+#names(intsec.list) <- c("Secreted", "TIF", "Exosomes", "Plasma", "PlasmaMP", "TIFYates")
 
-intsec.list <- list(SecretedBoerU, tif_full_id, ExosomesAllU, PlasmaU, PlasmaMPU, TIFYatesU)
-names(intsec.list) <- c("Secreted", "TIF", "Exosomes", "Plasma", "PlasmaMP", "TIFYates")
-
-
+# Gene Symbol
 intsec.list <- list(SecretedBoerG, tif_full_name, ExosomesAllG, PlasmaG, PlasmaMPG, TIFYatesG)
 names(intsec.list) <- c("Secreted", "TIF", "Exosomes", "Plasma", "PlasmaMP", "TIFYates")
 
-
-
+# Make upsetplot
 colov <- c("#08605F", "#177E89", "#598381","#8E936D", "#5D737E", "#394053")
 highly_expressed <- plot_upsetR(intsec.list, names(intsec.list), "test2", colov, TRUE, FALSE)
 
@@ -57,6 +56,7 @@ names(intsec.list) <- c("TIF", "NIF", "FIF")
 
 TIF_NIF_FIF <- plot_upsetR(intsec.list, names(intsec.list), "Overlap_TIF_NIF_FIF", colov[c(1,2)], TRUE, FALSE)
 
+# Plot venn diagram
 venn <- venn.diagram(list(A=tif_full_id, B=nif_pooled_id, C=fif_pooled_id), category.names = c("TIF", "NIF_pooled", "FIF_pooled"), filename=NULL, lwd = 0.7, fill=rainbow(3), sub.cex = 2, cat.cex= 2, cex=1.5)
 grid.draw(venn)
 
@@ -72,8 +72,10 @@ tif_fif <- unique(intersect(tif_full_id, fif_pooled_id))
 nif_fif <- unique(intersect(nif_pooled_id, fif_pooled_id)) 
 nif_fif <- gsub(pattern = "-[0-9]", "", nif_fif)
 
+# Protein universe from TIF, NIF AND FIF
 prot_univ <- unique(sort(c(fif_pooled_id, nif_pooled_id, tif_full_id)))
 
+# GOobject
 tif_nif_fif_GOobject <- GOobject("BP", prot_univ, tif_nif_fif, GO_background) 
 
 tif_nif_fif_GO <- TOPGO("BP", prot_univ, tif_nif_fif, GO_background, 50) 
@@ -90,19 +92,19 @@ resultElim = getSigGroups(tif_nif_fif_GOobject, test.stat)
 showSigOfNodes(tif_nif_fif_GOobject, score(resultElim), firstSigNodes = 5, useInfo ='all')
 printGraph(tif_nif_fif_GOobject, resultElim, firstSigNodes = 5, fn.prefix = "tGO", useInfo = "all", pdfSW = TRUE)
 
+# Plots
 barplot_func(tif_nif_fif_GO)
-
 corrplot_func(tif_nif_fif_GO)
 
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# PATHWAY ANALYSIS Overlap TIF, NIF, FIF
+# PATHWAY ANALYSIS - OVERLAP TIF, NIF, FIF
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# Convert IDs using biomaRt
 ensembl <- useMart('ensembl', dataset = "hsapiens_gene_ensembl")
 univ_enz <- unique(sort(as.character(getBM(attributes=c("uniprotswissprot", "entrezgene_id"), filters="uniprotswissprot", values=prot_univ, mart=ensembl)$entrezgene_id)))
-#univ_nif_fif_enz <- unique(sort(as.character(getBM(attributes=c("uniprotswissprot", "entrezgene_id"), filters="uniprotswissprot", values=unique(sort(c(nif_pooled_id,fif_pooled_id))), mart=ensembl)$entrezgene_id)))
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -130,22 +132,11 @@ batch_corr_TILs <- combat_corrections(tifdata_small, TILs, pool)
 batch_corr_diag_TILs <- combat_corrections(tifdata_small, diag, pool, TILs)
 
 
-# MODEL ON RECEPTOR STATUS 
-#batch_corr_receptor<- combat_corrections(tifdata_small, receptor_status, pool, TILs)
-
-
-# MULTIDIMENSIONAL SCALING, LABELED BY EITHER DIAGNOSIS OR RECEPTOR STATUS
+# MULTIDIMENSIONAL SCALING, LABELED BY EITHER DIAGNOSIS OR TIL STATUS
 myMDSplot(tifdata_small, diag, "", colorcode_diag)
 myMDSplot(batch_corr_diag, diag, "", colorcode_diag)
 myMDSplot(batch_corr_TILs, TILs, "", brewer.pal(3, "Blues")[-1])
 myMDSplot(batch_corr_diag_TILs, diag, "", colorcode_diag)
-
-
-
-
-myMDSplot(tifdata_small, receptor_status, receptor_status, colorcode_receptor)
-myMDSplot(batch_corr_receptor, receptor_status, receptor_status, colorcode_receptor)
-
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -194,13 +185,11 @@ my.GR <- get_colors(Gr, c("#032A63","#0071AA"))
 my.TILS <- get_colors(TILs, c("#032A63","#0071AA"))
 my.ST <- get_colors(diag, c("#FAA275","#DDDC71", "#BF5454"))
 my.C3 <- get_colors(C3, viridis(3, begin = 0.2, end =0.9))
-#my.Age <- get_colors(AgeITV, c(brewer.pal(3,"Purples")))
-#my.TP <- get_colors(tp, c(brewer.pal(4,"Reds")))
-#my.AR <- get_colors(AR, c("seashell","grey60"))
-#my.pool <- get_colors(pool, c("olivedrab","bisque3", "azure3", "seagreen"))
 
+# Color sheme combined
 my.cols <- cbind(my.ST, my.ER, my.PGR, my.HER2, my.TILS, my.GR)
 
+# Plot heatmap
 pdf("proteinclusters.pdf")
 heatmap.plus(as.matrix(scale(batch_corr_diag)),col=heat.cols, hclustfun=function(d) hclust(d, method="ward.D2"), trace="none", Rowv = NA, labRow="", labCol="", ColSideColors=my.cols, margins = c(14,8), cexCol=1.2, cexRow = 1.3)
 legend("bottomleft", legend = c(levels(diag), ""), ncol=1, lty=c(1,1), lwd=c(3,3), cex=0.7, col=c(colorcode_diag, "white"), bty = "n")
@@ -211,10 +200,10 @@ dev.off()
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
+# Make den dendrogram using the ward.D2 clustering metric
 dend <- as.dendrogram(hclust(dist(t(batch_corr_diag)), method = "ward.D2"))
 
-
+# Plot dendrogram
 pdf("Dendogram.pdf", height = 10, width = 12)
 par(mar=c(10,1,1,1))
 lefcol <- c(rep("#0071AA", 14), rep("#032A63", 20))
