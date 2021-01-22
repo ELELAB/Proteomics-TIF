@@ -43,27 +43,6 @@ library(RColorBrewer)
 
 
 
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# GO2GENE OBJECT FUNCTION:
-# Takes as arguments;
-    # humandata =  HUGO human gene/protein database.
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-read_in_data <- function(humandata) {
-  hugo <- read.delim(humandata, header=F)
-  colnames(hugo) <- c("database", "Accession", "name", "ID1", "GO_ID", "GO_ID_ref", "ID2", "Pubmed", "ID3", "Description", "full", "type", "taxon", "ID4", "where", "ID5", "ID6") # column names
-  # create go2gene object
-  goids <- as.character(unique(hugo$GO_ID))
-  grps <- lapply(goids, FUN=function(x) as.character(hugo$Accession)[grep(x, as.character(hugo$GO_ID))])
-  names(grps) <- goids
-  return(grps)
-}
-
-
-
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # GO OBJECT FUNCTION:
 # Takes as arguments;
