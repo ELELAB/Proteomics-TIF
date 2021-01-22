@@ -31,10 +31,6 @@ tif_full_name <- unique(tif_full$name)
 # OVERLAP TIF PROTEINS WITH PLASMA, EXOSOMES, SECRETED AND INDEPENDENT TIF SET
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# Uniprot
-#intsec.list <- list(SecretedBoerU, tif_full_id, ExosomesAllU, PlasmaU, PlasmaMPU, TIFYatesU)
-#names(intsec.list) <- c("Secreted", "TIF", "Exosomes", "Plasma", "PlasmaMP", "TIFYates")
-
 # Gene Symbol
 intsec.list <- list(SecretedBoerG, tif_full_name, ExosomesAllG, PlasmaG, PlasmaMPG, TIFYatesG)
 names(intsec.list) <- c("Secreted", "TIF", "Exosomes", "Plasma", "PlasmaMP", "TIFYates")
@@ -78,14 +74,14 @@ prot_univ <- unique(sort(c(fif_pooled_id, nif_pooled_id, tif_full_id)))
 # GOobject
 tif_nif_fif_GOobject <- GOobject("BP", prot_univ, tif_nif_fif, GO_background) 
 
+# Enrich for GO terms
 tif_nif_fif_GO <- TOPGO("BP", prot_univ, tif_nif_fif, GO_background, 50) 
 
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# GO_TERM GRAPHS
-
+# Test significance of enrichment
 test.stat = new("elimCount", testStatistic = GOFisherTest, name = "elim test", cutOff = 0.01)
 resultElim = getSigGroups(tif_nif_fif_GOobject, test.stat)
 
@@ -108,7 +104,7 @@ univ_enz <- unique(sort(as.character(getBM(attributes=c("uniprotswissprot", "ent
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
+# Enrich for pathways
 pw_tif_nif_fif <- enrich_pathway(univ_enz, tif_nif_fif, "tif_nif_fif_overlap", my.plot = TRUE)
 pw_tif_nif <- enrich_pathway(univ_enz, tif_nif, "tif_nif_overlap", my.plot = TRUE)
 pw_tif_fif <- enrich_pathway(univ_enz, tif_fif, "tif_fif_overlap", my.plot = TRUE)
@@ -126,17 +122,16 @@ pw_nif_fif <- enrich_pathway(univ_enz, nif_fif, "nif_fif_overlap", my.plot = TRU
 # BATCH CORRECTION USING POOL, TUMOR PERCENTAGE AND TUMOR INFILTRATING LYMPHOCYTES.
 
 
-# MODEL ON DIAGNOSIS
-batch_corr_diag <- combat_corrections(tifdata_small, diag, pool)
-batch_corr_TILs <- combat_corrections(tifdata_small, TILs, pool)
-batch_corr_diag_TILs <- combat_corrections(tifdata_small, diag, pool, TILs)
+# MODEL ON DIAGNOSIS and TILs
+batch_corr_diag <- combat_corrections(tifdata_small, pool, diag)
+batch_corr_TILs <- combat_corrections(tifdata_small, pool, TILs)
 
 
 # MULTIDIMENSIONAL SCALING, LABELED BY EITHER DIAGNOSIS OR TIL STATUS
 myMDSplot(tifdata_small, diag, "", colorcode_diag)
 myMDSplot(batch_corr_diag, diag, "", colorcode_diag)
 myMDSplot(batch_corr_TILs, TILs, "", brewer.pal(3, "Blues")[-1])
-myMDSplot(batch_corr_diag_TILs, diag, "", colorcode_diag)
+
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -158,7 +153,9 @@ pvrect(lab_check_receptor_status, alpha=0.90)
 # Kmeans
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# Get optimal number of clusters
 #optimal_nc(batch_corr_diag)
+
 set.seed(25)
 #C2 <- as.factor(paste0("C",as.factor(as.character(kmeans(t(batch_corr_diag), 2, iter.max = 100)$cluster))))
 C3 <- paste0("C",as.factor(as.character(kmeans(t(batch_corr_diag), 3, iter.max = 300)$cluster)))
@@ -225,8 +222,6 @@ dev.off()
 
 # CALCULATING DIFFERENCES BETWEEN LINEAR MODELS: LogFC > 1 and FDR < 0.5 OR LogFC < -1 and FDR < 0.5. 
 
-
-
 # Diagnosis with pool
 diag_design <- model.matrix(~0+diag+pool)
 DA_diag1 <- DA_all_contrasts(tifdata_small, diag_design, diag, "diag", 1, 0.05)
@@ -244,29 +239,6 @@ DA_diag2 <- DA_all_contrasts(tifdata_small, diag_design, diag, "diag", 1, 0.05)
 #write_out(rbind(DA_diag$`diagHER2-diagLumA`[[1]],DA_diag$`diagHER2-diagLumA`[[2]]), "HER2_LumA_DA")
 #write_out(rbind(DA_diag$`diagHER2-diagTNBC`[[1]],DA_diag$`diagHER2-diagTNBC`[[2]]), "HER2_TNBC_DA")
 #write_out(rbind(DA_diag$`diagLumA-diagTNBC`[[1]], DA_diag$`diagLumA-diagTNBC`[[2]]), "LumA_TNBC_DA")
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# H-CLUSTERING OF FULL DIAG DATASET
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#tree(sig_diag_scaled, 3, colorcode_diag, diag)
-
-
-# hierarchical clustering
-# heatmap colors in blue
-#heat.cols <- colorRampPalette(brewer.pal(9, "YlGnBu"))(n = 300)
-
-
-# HEATMAP.PLUS COLOR-MATRIX
-#col_diag <- get_colors(diag, colorcode_diag)
-#col_diag <- cbind(replicate(nrow(col_diag), "white"), col_diag)
-
-
-# HEATMAP
-#heatmap.plus(as.matrix(sig_diag_scaled), dendrogram="col", col= heat.cols, hclustfun=function(d) hclust(d, method="ward.D2"), trace="none", labRow="", ColSideColors=col_diag, margins = c(14,8))
-
-
 
 
 
