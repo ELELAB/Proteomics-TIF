@@ -46,11 +46,6 @@ tifinfo <- tifinfo[-22,]
 TILs <- as.factor(as.character(ifelse(tifinfo$TILs %in% c("T0", "T1"), "low", "high")))
 TILsOri <-  factor(as.character(tifinfo$TILs), levels=c("T3", "T2", "T1", "T0"))
 diag <-  as.factor(as.character(tifinfo$diag))
-#diag <- ifelse(tifinfo$diag == "LumA", "Luminal", as.character(tifinfo$diag))
-#diag <- as.factor(as.character(ifelse(diag == "HER2", "Her2", as.character(diag))))
-
-#tp <-  as.factor(as.character(tifinfo$tp))
-#receptor_status <-  as.factor(as.character(tifinfo$receptor_status))
 pool <-  as.factor(as.character(paste0("p",tifinfo$pool)))
 Gr <- as.factor(as.character(ifelse(tifinfo$Gr == "3", "high", "low")))
 ER <- as.factor(as.character(tifinfo$ER))
@@ -107,10 +102,6 @@ PlasmaMPG  <- unique(as.character(PlasmaMP$Names))
 SecretedBoer  <- read.delim("Boersema/protein_secreted_Boersema.txt", header = TRUE)
 SecretedBoerU <- unique(as.character(SecretedBoer$Uniprot))
 SecretedBoerG <- unique(as.character(SecretedBoer$Names))
-
-#PlasmaBoer  <- read.delim("Boersema/BoersemaPlasma.txt", header = TRUE)
-#PlasmaBoerU <- unique(as.character(PlasmaBoer$Uniprot))
-#PlasmaBoerG <- unique(as.character(PlasmaBoer$Names))
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -188,9 +179,5 @@ pam50 <- c("ACTR3B", "ANLN", "BAG1", "BCL2", "BIRC5", "BLVRA", "CCNB1", "CCNE1",
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 colorcode_receptor <- c("#F8766D", "#FD61D1", "#B983FF", "#00BA38", "#00BCD8")
-#colorcode_diag <- c("#FD61D1","#00B0F6","#00BF7D")
 colorcode_diag <- c("#FAA275","#DDDC71", "#BF5454")
-#colorcode_diag_new <- c("#FD61D1","#00B0F6","#00BF7D", "#B983FF")
 
-
-# myprots <- c("Q8TD06", "P50895", "Q9NYQ6", "Q9BRT3", "P18440", "P78356", "Q15437", "Q9BU02", "Q9NW97", "Q9BZM5")
