@@ -334,28 +334,6 @@ get_colors <- function(my.truestatus, my.cols) {
 
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# FUNCTION FOR MAKING DENDOGRAM
-# takes as arguments:
-# dataset = a dataframe with expression/abundance counts
-# nc = a number of clusters to draw (integer)
-# colorcode = a colorcode for coloring lables (a character vector)
-# colorby = a vector to color by, e.g. lables/groups
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-tree <- function(dataset, nc, colorcode, colorby) {
-  d <- dist(t(dataset), method = "euclidean")
-  fit_tree <- hclust(d, method="ward.D2") 
-  dend <- as.dendrogram(fit_tree)
-  #dend <- color_branches(dend, k=2, col=c("#F8766D", "#00BCD8"))
-  par(cex=0.7, mar=c(18, 4, 2, 1))
-  labels_colors(dend) <- colorcode[as.factor(colorby)][order.dendrogram(dend)]
-  plot(dend, type="triangle", edgePar = list(lwd = 2))
-  groups <- cutree(fit_tree, nc) 
-  rect.hclust(fit_tree, nc, border="grey")
-}
-
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -930,76 +908,6 @@ get_stats <- function(l1, l2, l3) {
   fisher <- fisher.test(mytab)
   return(fisher)
   }
-
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# 3D PLOT
-# Takes as arguments;
-    # my.data = a  N x 3 dataframe of expression/abundance data with IDs as rownames OR a pca object with 3 PCs
-    # my.colors = a vector of colors, same length as number of samples
-    # my.r =  size of spheres
-    # my.names = vector with names to put on the axis.
-    # if is.PCAobejct = TRUE, data will be treated as a pca object.
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-my_3Dplot <- function(my.data, my.colors, my.r, my.names, is.PCAobejct) {
-  if(is.PCAobejct == TRUE) {
-    pca <- prcomp(t(my.data), center = TRUE, scale=TRUE)
-    pc <- data.frame(predict(pca, newdata = t(my.data)))
-  }
-  else {
-    pc <- data.frame(t(my.data))
-    colnames(pc) <- c("PC1", "PC2", "PC3")
-  }
-  rgl.bg(color = "antiquewhite")
-  rgl.spheres(pc$PC1, pc$PC2, pc$PC3, r=my.r, col= my.colors)
-  lim <- function(x){c(-max(abs(x)), max(abs(x)))}
-  rgl.lines(lim(pc$PC1), c(0,0), c(0,0), color= "grey50")
-  rgl.lines(c(0,0), lim(pc$PC2),  c(0,0), color= "grey50")
-  rgl.lines(c(0,0), c(0,0),  lim(pc$PC3),  color= "grey50")
-  ellips <- ellipse3d(cov(cbind(pc$PC1, pc$PC2, pc$PC3)), centre = c(mean(pc$PC1), mean(pc$PC2), mean(pc$PC3)), level = 0.95)
-  wire3d(ellips, col="grey50", lit=FALSE)
-  aspect3d(1,1,1)
-  axes <- rbind(c(lim(pc$PC1)[2], 0, 0), c(0, lim(pc$PC2)[2], 0), c(0, 0, lim(pc$PC3)[2]))
-  rgl.texts(axes, text = c(my.names[1], my.names[2], my.names[3]), color = "grey50", adj = c(0.5, -0.8), size = 2)
-}
-
-
-# coo <- 1:720
-# for(i in 1:length(coo)){
-#   rgl.viewpoint(coo[i])
-# }
-
-
-
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# 3D SCATTERPLOT
-# Takes as arguments;
-    # my.data = a  N x 3 dataframe of expression/abundance data with IDs as rownames OR a pca object with 3 PCs
-    # my.colors = a vector of colors, same length as number of samples
-    # my.group = vector of group labels, same length as number of samples
-    # my.names = vector with names to put on the axis.
-    # if is.PCAobejct = TRUE, data will be treated as a pca object.
-# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-my_3Dscatter <- function(my.data, my.colors, my.group, my.names, is.PCAobejct) {
-  if(is.PCAobejct == TRUE) {
-    pca <- prcomp(t(my.data), center = TRUE, scale=TRUE)
-    pc <- data.frame(predict(pca, newdata = t(my.data)))
-  }
-  else {
-    pc <- data.frame(t(my.data))
-    colnames(pc) <- c("PC1", "PC2", "PC3")
-  }
-  greycol <- rep("grey60", nrow(my.data))
-  with(pc, text3D(PC1, PC2, PC3, col = my.colors, theta = 10, phi=15, labels = my.group, cex = 0.8, bty = "b2", d = 3, clab = c("Urban","Pop"), adj = 0.6, font = 2, xlab=my.names[1], ylab=my.names[2], zlab=my.names[3]))
-  with(pc, scatter3D(PC1, PC2, PC3, col=greycol, type = "h", add = TRUE))
-}
-
-
 
 
 
