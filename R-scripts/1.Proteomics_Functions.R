@@ -5,25 +5,21 @@
 
 # LOAD PACKAGES
 library(pamr)
+library(openxlsx)
+library(tidyverse)
+library(reshape)
+library(stringr)
+library(plyr)
+
 library(limma)
 library(sva)
-library(openxlsx)
-library(ggplot2)
-library(dendextend)
-library(tidyverse)
-library(heatmap.plus)
-library(reshape)
-library(VennDiagram)
+
 library(gdata) 
 library(topGO)
 library(biomaRt)
 library(GOSim)
-library(corrplot)
 #library(pvclust)
-library(stringr)
-library(plyr)
-library(gplots)
-#library(ReactomePA)
+
 library(glmnet)
 library(fitdistrplus)
 library(caTools)
@@ -32,8 +28,16 @@ library(glmnet)
 library(e1071)
 library(caret)
 library(varSelRF)
+
+library(ggplot2)
 library(UpSetR)
+library(corrplot)
+library(gplots)
+library(dendextend)
+library(heatmap.plus)
+library(VennDiagram)
 library(RColorBrewer)
+
 #library(gage)
 #library(pathview)
 
@@ -85,7 +89,7 @@ GOobject <-function(ont, univ, intpro, GO_background){
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# TOPGO FUNCTIN:
+# TOPGO FUNCTION:
 # Takes as arguments;
     # ont = the ontology to enrich for
     # univ = a protein univers
@@ -134,7 +138,7 @@ corrplot_func <- function(res) {
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# GENE ONTOLOGY VISUALIZATION:
+# GENE ONTOLOGY FUNCTION:
 # takes as arguments:
 # my.proteins = list of uniprot IDs
 # my.univers = a protein univers
@@ -181,9 +185,9 @@ GO_map_to <- function(humanGO, my.GOs, my.proteins.vector, my.gene.vector) {
 
 
 
-# ------------------------------------------------------------------------------------------
-# DIFFERENTIAL EXPRESSION ANLYSIS
-# ------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# DATA CORRECTION AND VISUALIZATION
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Batch correction of data:
 # Takes as arguments;
     # my.data = abundance/expression data
@@ -221,10 +225,11 @@ myMDSplot <- function(my.data, my.group, my.labels, my.cols) {
 
 
 
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# DIFFERENTIAL EXPRESSION ANLYSIS
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# FUNCTION TO OBTAIN DIFFERENTIALLY ABUNDANT GLYCANS:
+# FUNCTION TO OBTAIN DIFFERENTIALLY ABUNDANT PROTEINS:
 # Takes as arguments;
 # a contrast between groups of interest
 # a dataframe, a design matrix with all comparisons
@@ -264,7 +269,7 @@ DA_proteins <- function(my.contrast, my.data, my.design, coLFC, coFDR, my.block=
 # a design matrix with all comparisons
 # cutoffs for logFC and FDR
 # if blocking than a vector of patient IDs
-# TRUE/FALSE statment specifying output format, if TRUE the function return a vector of glycan IDs only
+# TRUE/FALSE statment specifying output format, if TRUE the function return a vector of protein IDs only
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -283,7 +288,7 @@ DA_proteins_apply <- function(my.contrasts, my.data, my.design, coLFC, coFDR, my
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# FUNCTION FOR DA ANALYSIS WITH CLINICAL PARAMETERS. THE FUNCTION CALLS THE "DA_glycan_apply" FROM ABOVE.
+# FUNCTION FOR DA ANALYSIS WITH CLINICAL PARAMETERS. THE FUNCTION CALLS THE DA_proteins_apply FROM ABOVE.
 # Takes as arguments;
 # a dataframe
 # a vector of groups do perform contrasts on (same length as ncol(dataframe))
